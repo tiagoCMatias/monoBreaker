@@ -1,61 +1,9 @@
 import ast
+from collections import defaultdict
 from fnmatch import fnmatch
-import glob
 import optparse
 import os
-import re
 import sys
-
-from collections import namedtuple, defaultdict
-
-Import = namedtuple("Import", ["module", "name", "alias"])
-Class = namedtuple("Class", ["name"])
-
-
-#
-# def parse_file(file):
-#     class_list = []
-#     import_list = []
-#
-#     function_names = []
-#
-#     names = []
-#
-#     class_name = None
-#     method_name = None
-#     text = file
-#     p = ast.parse(text)
-#     honey = HoneyMaker()
-#     # node = ast.NodeVisitor()
-#     for node in ast.walk(p):
-#         honey.generic_visit(node)
-#         if isinstance(node, ast.ImportFrom):
-#             import_list.append(node.module.split('.'))
-#         if isinstance(node, ast.Name):
-#             names.append(node.id)
-#         if isinstance(node, (ast.Module, ast.Expr, ast.Dict, ast.Str,
-#                              ast.Attribute, ast.Num, ast.Name, ast.Load, ast.Tuple)):
-#             if isinstance(node, ast.Expr):
-#                 if isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute):
-#                     if isinstance(node.value.func.value, ast.Name):
-#                         function_names.append(node.value.func.value.id)
-#
-#         if isinstance(node, ast.FunctionDef) or isinstance(node, ast.ClassDef):
-#             if isinstance(node, ast.ClassDef):
-#                 class_name = node.name
-#             else:
-#                 method_name = node.name
-#             if class_name is not None and method_name is not None:
-#                 sub_list = (method_name, class_name)
-#                 class_list.append(sub_list)
-#     for name in set(names):
-#         print(name)
-#     print("-----------------------------")
-#     for function in function_names:
-#         print(function)
-#
-#     honey.calculate_imports()
-#     print("cenas")
 
 
 class HoneyMaker(ast.NodeVisitor):
