@@ -4,6 +4,8 @@ from fnmatch import fnmatch
 import optparse
 import os
 import sys
+import networkx as nx
+
 
 
 class HoneyMaker(ast.NodeVisitor):
@@ -88,7 +90,7 @@ if __name__ == "__main__":
         # file = options.pyfile
         try:
             pattern = '*.py'
-            for path, subdirs, files in os.walk('Samples'):
+            for path, subdirs, files in os.walk('Samples/django_proj'):
                 for name in files:
                     if fnmatch(name, pattern):
                         honeyMaker = HoneyMaker(os.path.join(path, name))
@@ -97,12 +99,22 @@ if __name__ == "__main__":
         except Exception as e:
             print("error: {}".format(e))
 
+    G = nx.Graph()
     data = defaultdict(list)
+
     for module in directory_info:
         for _import in module['imports']:
             for _module in directory_info:
-                if _import['module'] == _module['module_name'].replace(".py", ""):
-                    data[module['module_name']].append(_import['module'])
+                for class_module in _module['classes']:
+                    print("{} - {}".format(_import['name'] , class_module.name))
+                    if _import['name'] == class_module.name:
+                             data[module['module_name']].append(_import['name'])
+
+    for k, v in data.items():
+        for new_edge in v:
+            G.add_edge(k, new_edge, weight=2)
+
+    nx.write_gexf(G, "output/test.gexf")
 
     print("""
         File: {}
