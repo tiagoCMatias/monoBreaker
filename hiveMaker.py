@@ -1,11 +1,11 @@
 import ast
-from collections import defaultdict
-from fnmatch import fnmatch
 import optparse
 import os
 import sys
-import networkx as nx
+from collections import defaultdict
+from fnmatch import fnmatch
 
+import networkx as nx
 
 
 class HoneyMaker(ast.NodeVisitor):
@@ -31,7 +31,7 @@ class HoneyMaker(ast.NodeVisitor):
             'import_info': self.number_of_imports
         }
 
-    def get_pollen(self):
+    def parse_file(self):
         node = ast.parse(self.code_string)
         self.functions = [n for n in node.body if isinstance(n, ast.FunctionDef)]
         self.classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
@@ -48,10 +48,10 @@ class HoneyMaker(ast.NodeVisitor):
         module = node.module
         for n in node.names:
             self.imports.append({
-                    'module': module,
-                    'name': n.name, #.split('.'),
-                    'asname': n.asname
-                })
+                'module': module,
+                'name': n.name,  # .split('.'),
+                'asname': n.asname
+            })
 
     def visit_Name(self, node):
         if hasattr(node, 'id'):
@@ -62,15 +62,18 @@ class HoneyMaker(ast.NodeVisitor):
     def calculate_imports(self):
         for my_import in self.imports:
             self.number_of_imports[my_import['name']] = 0
+            my_import.update({'usage': 0})
+
         for my_import in self.imports:
             for my_class in self.names:
                 if my_class['class'] == my_import['name']:
+                    my_import['usage'] += 1
                     self.number_of_imports[my_import['name']] += 1
 
     def get_classes(self, node):
         self.classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
         for _class in self.classes:
-            #print("Class name:", _class.name)
+            # print("Class name:", _class.name)
             methods = [n for n in _class.body if isinstance(n, ast.FunctionDef)]
             for method in methods:
                 self.class_methods[_class.name] = method
@@ -90,11 +93,11 @@ if __name__ == "__main__":
         # file = options.pyfile
         try:
             pattern = '*.py'
-            for path, subdirs, files in os.walk('Samples/django_proj'):
+            for path, subdirs, files in os.walk('Samples/core'):
                 for name in files:
                     if fnmatch(name, pattern):
                         honeyMaker = HoneyMaker(os.path.join(path, name))
-                        honeyMaker.get_pollen()
+                        honeyMaker.parse_file()
                         directory_info.append(honeyMaker.to_dict())
         except Exception as e:
             print("error: {}".format(e))
@@ -108,14 +111,15 @@ if __name__ == "__main__":
                 for class_module in _module['classes']:
                     # print("{} - {}".format(_import['name'] , class_module.name))
                     if _import['name'] == class_module.name:
-                             data[module['module_name']].append(_import['name'])
+                        data[module['module_name']].append({'name': _import['name'],
+                                                            'usage': _import['usage']})
 
     for k, v in data.items():
         for new_edge in v:
-            print("Node:{} - {} - W:{}".format(k, new_edge, 2))
-            #G.add_edge(k, new_edge, weight=2)
+            #print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
+            G.add_edge(k, new_edge['name'], weight=new_edge['usage'])
 
-    #nx.write_gexf(G, "output/test.gexf")
+    nx.write_gexf(G, "output/test.gexf")
 
     print("""
         File: {}
