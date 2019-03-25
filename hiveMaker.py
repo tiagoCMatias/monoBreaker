@@ -106,15 +106,16 @@ if __name__ == "__main__":
         for _import in module['imports']:
             for _module in directory_info:
                 for class_module in _module['classes']:
-                    print("{} - {}".format(_import['name'] , class_module.name))
+                    # print("{} - {}".format(_import['name'] , class_module.name))
                     if _import['name'] == class_module.name:
                              data[module['module_name']].append(_import['name'])
 
     for k, v in data.items():
         for new_edge in v:
-            G.add_edge(k, new_edge, weight=2)
+            print("Node:{} - {} - W:{}".format(k, new_edge, 2))
+            #G.add_edge(k, new_edge, weight=2)
 
-    nx.write_gexf(G, "output/test.gexf")
+    #nx.write_gexf(G, "output/test.gexf")
 
     print("""
         File: {}
