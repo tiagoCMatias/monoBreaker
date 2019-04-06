@@ -1,6 +1,7 @@
 import ast
 import optparse
 import os
+import re
 import sys
 from collections import defaultdict
 from fnmatch import fnmatch
@@ -89,16 +90,34 @@ if __name__ == "__main__":
     file_info = []
     directory_info = []
 
+    directory_path = 'Samples/aggregation_service_api'
+    urls = []
+
     if options.pyfile:
         # file = options.pyfile
         try:
             pattern = '*.py'
-            for path, subdirs, files in os.walk('Samples/core'):
+            for path, subdirs, files in os.walk(directory_path):
                 for name in files:
                     if fnmatch(name, pattern):
                         honeyMaker = HoneyMaker(os.path.join(path, name))
                         honeyMaker.parse_file()
                         directory_info.append(honeyMaker.to_dict())
+            url_file = directory_path + '/url.txt'
+            with open(url_file) as fp:
+                line = fp.readline()
+                cnt = 1
+                while line:
+                    print("Line {}: {}".format(cnt, line.strip()))
+                    endpoint = re.findall("[^\t]+", line.replace("\n", ""))
+                    urls.append({
+                        'name': endpoint[0],
+                        'module': endpoint[1],
+                        'functionCall': endpoint[2]
+                    })
+                    line = fp.readline()
+                    cnt += 1
+
         except Exception as e:
             print("error: {}".format(e))
 
@@ -106,20 +125,20 @@ if __name__ == "__main__":
     data = defaultdict(list)
 
     for module in directory_info:
-        for _import in module['imports']:
+        for _import in module.get('imports', []):
             for _module in directory_info:
-                for class_module in _module['classes']:
+                for class_module in _module.get('classes', []):
                     # print("{} - {}".format(_import['name'] , class_module.name))
-                    if _import['name'] == class_module.name:
-                        data[module['module_name']].append({'name': _import['name'],
-                                                            'usage': _import['usage']})
+                    if _import.get('name', []) == class_module.name:
+                        data[module['module_name']].append({'name': _import.get('name', None),
+                                                            'usage': _import.get('usage', None)})
 
     for k, v in data.items():
         for new_edge in v:
-            #print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
+            # print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
             G.add_edge(k, new_edge['name'], weight=new_edge['usage'])
 
-    nx.write_gexf(G, "output/test.gexf")
+    nx.write_gexf(G, "output/{}.gexf".format(directory_path.split("/")[1]))
 
     print("""
         File: {}
