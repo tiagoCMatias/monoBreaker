@@ -148,6 +148,7 @@ if __name__ == "__main__":
     if options.pyfile:
         try:
             new_dynamic = DynamicAnalysis("Test.db", directory_path)
+            new_dynamic.retrieve_queries()
             requests = new_dynamic.retrieve_all_request()
 
             pattern = '*.py'

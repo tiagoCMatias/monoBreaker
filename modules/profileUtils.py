@@ -69,3 +69,9 @@ class DynamicAnalysis:
         read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
                                 index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
 
+    def retrieve_queries(self):
+        requests = self.session.query(Request).distinct(Request.path).filter(Request.view_name.isnot(None)).all()
+
+        for request in requests:
+            sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
+            print(sql_query)
