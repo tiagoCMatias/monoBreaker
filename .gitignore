@@ -3,6 +3,9 @@
 Samples/
 output
 
+Test.db
+*.db
+
 
 ### Python template
 # Byte-compiled / optimized / DLL files
