@@ -15,7 +15,7 @@ def parse_url(directory_path):
                 urls.append({
                     'name': endpoint[0],
                     'module': endpoint[1],
-                    'functionCall': endpoint[2] if len(endpoint) > 2 else None
+                    'functionCall': endpoint[2] if len(endpoint) > 2 else ''
                 })
                 line = fp.readline()
                 cnt += 1

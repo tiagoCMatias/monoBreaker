@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     import_list = []
     file_info = []
-    directory_info = []
+    django_analysis = []
 
     parser = optparse.OptionParser()
     parser.add_option("--pyfile", action="store", dest="pyfile",
@@ -187,12 +187,14 @@ if __name__ == "__main__":
                     if fnmatch(name, file_pattern):
                         honeyMaker = HoneyMaker(os.path.join(path, name))
                         honeyMaker.parse_file()
-                        directory_info.append(honeyMaker.to_dict())
+                        django_analysis.append(honeyMaker.to_dict())
 
             new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
             dynamic_analysis = new_dynamic_analysis.analise_queries()
             urls = parse_url(directory_path)
-            static_relations = create_static_relations(directory_info)
+            static_relations = create_static_relations(django_analysis)
+
+            # [view['module'].split(".")[-1] for view in urls if "SalesOrder-without" in view.get('functionCall', [])]
 
             G = create_graph(static_relations)
 
