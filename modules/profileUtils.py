@@ -47,7 +47,7 @@ class SqlQuery(Base):
     request_id = db.Column(db.String)
 
 
-def tables_in_query(sql_str):
+def parse_tables_in_query(sql_str):
     # remove the /* */ comments
     q = re.sub(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", "", sql_str)
 
@@ -103,7 +103,7 @@ class DynamicAnalysis:
             # print(sql_query)
             for query in sql_query:
                 try:
-                    tables.append(tables_in_query(query.query))
+                    tables.append(parse_tables_in_query(query.query))
                     # print(tables)
                 except Exception as e:
                     print("error parsing sql: {}".format(str(e)))

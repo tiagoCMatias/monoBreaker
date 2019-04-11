@@ -42,9 +42,10 @@ class HoneyMaker(ast.NodeVisitor):
         }
 
     def is_django_model(self, class_):
-        if isinstance(class_.bases[0], ast.Attribute):
-            if "Model" is class_.bases[0].attr:
-                return True
+        if len(class_.bases) > 0:
+            if isinstance(class_.bases[0], ast.Attribute):
+                if "Model" is class_.bases[0].attr:
+                    return True
         return False
 
     def parse_django_model(self, django_model):
@@ -60,11 +61,13 @@ class HoneyMaker(ast.NodeVisitor):
                                         'db_table': model_meta_class_body.value.s
                                     })
 
-    def is_django_view(self, class_):
-        if isinstance(class_.bases[0], ast.Name):
-            if hasattr(class_.bases[0], 'id'):
-                if "viewset" in class_.bases[0].id.lower():
-                    return True
+    @classmethod
+    def is_django_view(cls, class_):
+        if len(class_.bases) > 0:
+            if isinstance(class_.bases[0], ast.Name):
+                if hasattr(class_.bases[0], 'id'):
+                    if "viewset" in class_.bases[0].id.lower():
+                        return True
         return False
 
     def parse_django_view(self, django_view):
@@ -134,29 +137,33 @@ class HoneyMaker(ast.NodeVisitor):
 
 
 if __name__ == "__main__":
-    parser = optparse.OptionParser()
-    parser.add_option("--pyfile", action="store", dest="pyfile",
-                      help="Take input from a Python source file")
-    (options, args) = parser.parse_args()
+
+    db_name = 'Test.db'
+    directory_path = 'Samples/core'
+    file_pattern = '*.py'
 
     import_list = []
     file_info = []
     directory_info = []
 
-    directory_path = 'Samples/core'
+    parser = optparse.OptionParser()
+    parser.add_option("--pyfile", action="store", dest="pyfile",
+                      help="Path to Django Project")
+    parser.add_option("--dbname", action="store", dest="dbname",
+                      help="Input to sqlite database (Default:{})".format(db_name))
+    (options, args) = parser.parse_args()
 
     if options.pyfile:
         try:
-            new_dynamic = DynamicAnalysis("Test.db", directory_path)
-            dynamic_analysis = new_dynamic.analise_queries()
-
-            pattern = '*.py'
             for path, subdirs, files in os.walk(directory_path):
                 for name in files:
-                    if fnmatch(name, pattern):
+                    if fnmatch(name, file_pattern):
                         honeyMaker = HoneyMaker(os.path.join(path, name))
                         honeyMaker.parse_file()
                         directory_info.append(honeyMaker.to_dict())
+
+            new_dynamic = DynamicAnalysis(db_name, directory_path)
+            dynamic_analysis = new_dynamic.analise_queries()
 
         except Exception as e:
             print("error: {}".format(e))
