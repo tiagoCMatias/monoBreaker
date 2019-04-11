@@ -1,12 +1,9 @@
+import re
+
 import pandas as pd
 import sqlalchemy as db
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import itertools
-import sqlparse
-
-from sqlparse.sql import IdentifierList, Identifier
-from sqlparse.tokens import Keyword, DML
 
 Base = declarative_base()
 
@@ -50,60 +47,40 @@ class SqlQuery(Base):
     request_id = db.Column(db.String)
 
 
-def is_subselect(parsed):
-    if not parsed.is_group:
-        return False
-    for item in parsed.tokens:
-        if item.ttype is DML and item.value.upper() == 'SELECT':
-            return True
-    return False
+def tables_in_query(sql_str):
+    # remove the /* */ comments
+    q = re.sub(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", "", sql_str)
 
+    # remove whole line -- and # comments
+    lines = [line for line in q.splitlines() if not re.match("^\s*(--|#)", line)]
 
-def extract_from_part(parsed):
-    from_seen = False
-    for item in parsed.tokens:
-        if from_seen:
-            if is_subselect(item):
-                for x in extract_from_part(item):
-                    yield x
-            elif item.ttype is Keyword:
-                return
-            else:
-                yield item
-        elif item.ttype is Keyword and item.value.upper() == 'FROM':
-            from_seen = True
+    # remove trailing -- and # comments
+    q = " ".join([re.split("--|#", line)[0] for line in lines])
 
+    # split on blanks, parens and semicolons
+    tokens = re.split(r"[\s)(;]+", q)
 
-def extract_table_identifiers(token_stream):
-    for item in token_stream:
-        if isinstance(item, IdentifierList):
-            for identifier in item.get_identifiers():
-                yield identifier.get_name()
-        elif isinstance(item, Identifier):
-            yield item.get_name()
-        # It's a bug to check for Keyword here, but in the example
-        # above some tables names are identified as keywords...
-        elif item.ttype is Keyword:
-            yield item.value
+    # scan the tokens. if we see a FROM or JOIN, we set the get_next
+    # flag, and grab the next one (unless it's SELECT).
 
+    result = set()
+    get_next = False
+    for tok in tokens:
+        if get_next:
+            if tok.lower() not in ["", "select"]:
+                result.add(tok)
+            get_next = False
+        get_next = tok.lower() in ["from", "join"]
 
-def extract_tables(sql):
-    stream = extract_from_part(sqlparse.parse(sql)[0])
-    return list(extract_table_identifiers(stream))
+    return result
 
 
 class DynamicAnalysis:
     def __init__(self, db_name, directory_path):
         self.engine = db.create_engine('sqlite:///' + db_name)
         self._create_database(directory_path)
-        Session = sessionmaker(bind=self.engine)
-        self.session = Session()
-
-    def retrieve_all_request(self):
-        return self.session.query(Request).filter(Request.view_name.isnot(None)).all()
-
-    def retrieve_unique_requests(self):
-        return self.session.query(Request).filter(Request.view_name.isnot(None)).all()
+        session = sessionmaker(bind=self.engine)
+        self.session = session()
 
     def _create_database(self, directory_path):
         conn = self.engine.connect()
@@ -116,15 +93,23 @@ class DynamicAnalysis:
         read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
                                 index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
 
-    def retrieve_queries(self):
+    def analise_queries(self):
+        dynamic_analysis = []
         requests = self.session.query(Request).distinct(Request.path).filter(Request.view_name.isnot(None)).all()
 
         for request in requests:
+            tables = []
             sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
             # print(sql_query)
             for query in sql_query:
                 try:
-                    tables = ', '.join(extract_tables(query.query))
-                    print(tables)
+                    tables.append(tables_in_query(query.query))
+                    # print(tables)
                 except Exception as e:
                     print("error parsing sql: {}".format(str(e)))
+            dynamic_analysis.append({
+                'path': request.path,
+                'view_name': request.view_name,
+                'tables': tables
+            })
+        return dynamic_analysis

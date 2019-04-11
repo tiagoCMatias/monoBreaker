@@ -148,8 +148,7 @@ if __name__ == "__main__":
     if options.pyfile:
         try:
             new_dynamic = DynamicAnalysis("Test.db", directory_path)
-            new_dynamic.retrieve_queries()
-            requests = new_dynamic.retrieve_all_request()
+            dynamic_analysis = new_dynamic.analise_queries()
 
             pattern = '*.py'
             for path, subdirs, files in os.walk(directory_path):

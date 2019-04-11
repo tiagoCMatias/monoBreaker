@@ -10,7 +10,7 @@ def parse_url(directory_path):
             line = fp.readline()
             cnt = 1
             while line:
-                print("Line {}: {}".format(cnt, line.strip()))
+                # print("Line {}: {}".format(cnt, line.strip()))
                 endpoint = re.findall("[^\t]+", line.replace("\n", ""))
                 urls.append({
                     'name': endpoint[0],
