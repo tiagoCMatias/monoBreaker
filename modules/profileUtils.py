@@ -85,13 +85,17 @@ class DynamicAnalysis:
     def _create_database(self, directory_path):
         conn = self.engine.connect()
 
-        read_requests = pd.read_csv(directory_path + request_csv_file)
-        read_requests.to_sql(request_table_name, conn, if_exists='append',
-                             index=False)  # Insert the values from the csv file into the table 'REQUEST'
+        import os
+        if os.path.isfile(directory_path + request_csv_file) and os.path.isfile(directory_path + sql_queries_csv_file):
+            read_requests = pd.read_csv(directory_path + request_csv_file)
+            read_requests.to_sql(request_table_name, conn, if_exists='append',
+                                 index=False)  # Insert the values from the csv file into the table 'REQUEST'
 
-        read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
-        read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
-                                index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+            read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
+            read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
+                                    index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+        else:
+            raise Exception("Missing CSVs for dynamic analysis")
 
     def analise_queries(self):
         dynamic_analysis = []

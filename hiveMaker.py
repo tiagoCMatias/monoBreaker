@@ -41,7 +41,8 @@ class HoneyMaker(ast.NodeVisitor):
             'django_views': self.django_views
         }
 
-    def is_django_model(self, class_):
+    @staticmethod
+    def is_django_model(class_):
         if len(class_.bases) > 0:
             if isinstance(class_.bases[0], ast.Attribute):
                 if "Model" is class_.bases[0].attr:
@@ -61,8 +62,8 @@ class HoneyMaker(ast.NodeVisitor):
                                         'db_table': model_meta_class_body.value.s
                                     })
 
-    @classmethod
-    def is_django_view(cls, class_):
+    @staticmethod
+    def is_django_view(class_):
         if len(class_.bases) > 0:
             if isinstance(class_.bases[0], ast.Name):
                 if hasattr(class_.bases[0], 'id'):
@@ -136,6 +137,29 @@ class HoneyMaker(ast.NodeVisitor):
                 self.class_methods[_class.name] = method
 
 
+def create_static_relations(module_list):
+    relations = defaultdict(list)
+    for module in module_list:
+        for _import in module.get('imports', []):
+            for _module in module_list:
+                for class_module in _module.get('classes', []):
+                    # print("{} - {}".format(_import['name'] , class_module.name))
+                    if _import.get('name', []) == class_module.name:
+                        relations[module['module_path']].append({'name': _import.get('name', None),
+                                                                        'usage': _import.get('usage', None)})
+    return relations
+
+
+def create_graph(relations):
+    generated_graph = nx.Graph()
+    for k, v in relations.items():
+        for new_edge in v:
+            # print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
+            generated_graph.add_edge(k, new_edge['name'], weight=new_edge['usage'])
+
+    return generated_graph
+
+
 if __name__ == "__main__":
 
     db_name = 'Test.db'
@@ -153,6 +177,9 @@ if __name__ == "__main__":
                       help="Input to sqlite database (Default:{})".format(db_name))
     (options, args) = parser.parse_args()
 
+    if options.dbname:
+        db_name = options.dbname
+
     if options.pyfile:
         try:
             for path, subdirs, files in os.walk(directory_path):
@@ -162,43 +189,23 @@ if __name__ == "__main__":
                         honeyMaker.parse_file()
                         directory_info.append(honeyMaker.to_dict())
 
-            new_dynamic = DynamicAnalysis(db_name, directory_path)
-            dynamic_analysis = new_dynamic.analise_queries()
+            new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
+            dynamic_analysis = new_dynamic_analysis.analise_queries()
+            urls = parse_url(directory_path)
+            static_relations = create_static_relations(directory_info)
+
+            G = create_graph(static_relations)
+
+            nx.write_gexf(G, "output/{}.gexf".format(directory_path.split("/")[1]))
 
         except Exception as e:
             print("error: {}".format(e))
 
-    urls = parse_url(directory_path)
-    class_names = []
-
-    for module in directory_info:
-        for class_module in module.get('classes', []):
-            class_names.append(class_module.name)
-
-    G = nx.Graph()
-    static_relations = defaultdict(list)
-
-    for module in directory_info:
-        for _import in module.get('imports', []):
-            for _module in directory_info:
-                for class_module in _module.get('classes', []):
-                    # print("{} - {}".format(_import['name'] , class_module.name))
-                    if _import.get('name', []) == class_module.name:
-                        static_relations[module['module_path']].append({'name': _import.get('name', None),
-                                                                        'usage': _import.get('usage', None)})
-
-    for k, v in static_relations.items():
-        for new_edge in v:
-            # print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
-            G.add_edge(k, new_edge['name'], weight=new_edge['usage'])
-
-    nx.write_gexf(G, "output/{}.gexf".format(directory_path.split("/")[1]))
-
     print("""
-        File: {}
+        Directory: {}
         Import Data: {}
         Class List: {}
-    """.format(options.pyfile, import_list, file_info))
+    """.format(directory_path, import_list, file_info))
 
-print("Existing")
-sys.exit(1)
+    print("Existing")
+    sys.exit(0)
