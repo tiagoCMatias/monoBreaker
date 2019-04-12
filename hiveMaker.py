@@ -5,6 +5,7 @@ import re
 import sys
 from collections import defaultdict
 from fnmatch import fnmatch
+import inspect
 
 import networkx as nx
 
@@ -191,6 +192,7 @@ if __name__ == "__main__":
 
             new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
             dynamic_analysis = new_dynamic_analysis.analise_queries()
+            new_dynamic_analysis.calculate_model_usage()
             urls = parse_url(directory_path)
             static_relations = create_static_relations(django_analysis)
 
