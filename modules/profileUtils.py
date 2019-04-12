@@ -75,12 +75,27 @@ def parse_tables_in_query(sql_str):
     return result
 
 
+from itertools import groupby
+
+
+def canonicalize_dict(x):
+    "Return a (key, value) list sorted by the hash of the key"
+    return sorted(x.items(), key=lambda x: hash(x[0]))
+
+
+def unique_and_count(lst):
+    "Return a list of unique dicts with a 'count' key added"
+    grouper = groupby(sorted(map(canonicalize_dict, lst)))
+    return [dict(k + [("count", len(list(g)))]) for k, g in grouper]
+
+
 class DynamicAnalysis:
     def __init__(self, db_name, directory_path):
         self.engine = db.create_engine('sqlite:///' + db_name)
         self._create_database(directory_path)
         session = sessionmaker(bind=self.engine)
         self.session = session()
+        self.query_analysis = []
 
     def _create_database(self, directory_path):
         conn = self.engine.connect()
@@ -98,7 +113,6 @@ class DynamicAnalysis:
             raise Exception("Missing CSVs for dynamic analysis")
 
     def analise_queries(self):
-        dynamic_analysis = []
         requests = self.session.query(Request).distinct(Request.path).filter(Request.view_name.isnot(None)).all()
 
         for request in requests:
@@ -111,9 +125,30 @@ class DynamicAnalysis:
                     # print(tables)
                 except Exception as e:
                     print("error parsing sql: {}".format(str(e)))
-            dynamic_analysis.append({
+            self.query_analysis.append({
                 'path': request.path,
                 'view_name': request.view_name,
-                'tables': tables
+                'tables': [item for sublist in tables for item in sublist]
             })
-        return dynamic_analysis
+        return self.query_analysis
+
+    def calculate_model_usage(self):
+        view_info = {}
+        view_names = set([view['view_name'] for view in self.query_analysis])
+
+        for view_name in view_names:
+            view_tables = [model['tables'] for model in self.query_analysis if view_name in model['view_name']]
+            view_tables = [item for sublist in view_tables for item in sublist]
+            db_info = []
+            for db_table in [ele for ind, ele in enumerate(view_tables, 1) if ele not in view_tables[ind:]]:
+                print("{} {}".format(db_table, view_tables.count(db_table)))
+                db_info.append({
+                    'model': db_table,
+                    'usage': view_tables.count(db_table)
+                })
+            view_info[view_name] = db_info
+            # print(view_tables)
+
+        return view_info
+
+        # return unique_and_count(self.query_analysis)
