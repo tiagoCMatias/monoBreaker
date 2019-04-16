@@ -1,11 +1,9 @@
 import ast
 import optparse
 import os
-import re
 import sys
 from collections import defaultdict
 from fnmatch import fnmatch
-import inspect
 
 import networkx as nx
 
@@ -146,8 +144,9 @@ def create_static_relations(module_list):
                 for class_module in _module.get('classes', []):
                     # print("{} - {}".format(_import['name'] , class_module.name))
                     if _import.get('name', []) == class_module.name:
-                        relations[module['module_path']].append({'name': _import.get('name', None),
-                                                                        'usage': _import.get('usage', None)})
+                        if len(module['django_views']) > 0:
+                            relations[module['django_views'][0]['name']].append({'name': _import.get('name', None),
+                                                                                 'usage': _import.get('usage', None)})
     return relations
 
 
@@ -159,6 +158,24 @@ def create_graph(relations):
             generated_graph.add_edge(k, new_edge['name'], weight=new_edge['usage'])
 
     return generated_graph
+
+
+def update_relations(static_relations, urls, dynamic_analysis, django_models):
+    for relation in static_relations:
+        for function in [url['name'] for url in urls if relation.lower() in url['module'].split(".")[-1].lower()]:
+            dynamic_data = dynamic_analysis.get(function)
+            if dynamic_data:
+                print(dynamic_data)
+
+
+def create_soething(to_be):
+    G = nx.Graph()
+
+    list =  [v for k, v in to_be.items()]
+    setmodels = [item for sublist in list for item in sublist]
+
+    for model in models:
+        G.add_node()
 
 
 if __name__ == "__main__":
@@ -190,12 +207,13 @@ if __name__ == "__main__":
                         honeyMaker.parse_file()
                         django_analysis.append(honeyMaker.to_dict())
 
-            new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
-            dynamic_analysis = new_dynamic_analysis.analise_queries()
-            new_dynamic_analysis.calculate_model_usage()
+            django_models = [models['django_models'][0] for models in django_analysis if len(models['django_models']) > 0 ]
             urls = parse_url(directory_path)
             static_relations = create_static_relations(django_analysis)
+            new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
+            dynamic_analysis = new_dynamic_analysis.calculate_model_usage()
 
+            update_relations(static_relations, urls, dynamic_analysis, django_models)
             # [view['module'].split(".")[-1] for view in urls if "SalesOrder-without" in view.get('functionCall', [])]
 
             G = create_graph(static_relations)

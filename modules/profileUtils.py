@@ -114,7 +114,7 @@ class DynamicAnalysis:
 
     def analise_queries(self):
         requests = self.session.query(Request).distinct(Request.path).filter(Request.view_name.isnot(None)).all()
-
+        self.query_analysis = []
         for request in requests:
             tables = []
             sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
@@ -133,6 +133,7 @@ class DynamicAnalysis:
         return self.query_analysis
 
     def calculate_model_usage(self):
+        self.analise_queries()
         view_info = {}
         view_names = set([view['view_name'] for view in self.query_analysis])
 
@@ -146,9 +147,6 @@ class DynamicAnalysis:
                     'model': db_table,
                     'usage': view_tables.count(db_table)
                 })
-            view_info[view_name] = db_info
-            # print(view_tables)
+            view_info[view_name.split(".")[-1]] = db_info
 
         return view_info
-
-        # return unique_and_count(self.query_analysis)
