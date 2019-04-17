@@ -1,13 +1,14 @@
 import ast
+import itertools
 import optparse
 import os
-import re
 import sys
 from collections import defaultdict
 from fnmatch import fnmatch
-import inspect
 
+import matplotlib.pyplot as plt
 import networkx as nx
+from networkx.algorithms.community import girvan_newman
 
 from modules.parseUrls import parse_url
 from modules.profileUtils import DynamicAnalysis
@@ -146,8 +147,9 @@ def create_static_relations(module_list):
                 for class_module in _module.get('classes', []):
                     # print("{} - {}".format(_import['name'] , class_module.name))
                     if _import.get('name', []) == class_module.name:
-                        relations[module['module_path']].append({'name': _import.get('name', None),
-                                                                        'usage': _import.get('usage', None)})
+                        if len(module['django_views']) > 0:
+                            relations[module['django_views'][0]['name']].append({'name': _import.get('name', None),
+                                                                                 'usage': _import.get('usage', None)})
     return relations
 
 
@@ -159,6 +161,70 @@ def create_graph(relations):
             generated_graph.add_edge(k, new_edge['name'], weight=new_edge['usage'])
 
     return generated_graph
+
+
+def update_relations(static_relations, urls, dynamic_analysis, django_models):
+    for relation in static_relations:
+        for function in [url['name'] for url in urls if relation.lower() in url['module'].split(".")[-1].lower()]:
+            dynamic_data = dynamic_analysis.get(function)
+            if dynamic_data:
+                print(dynamic_data)
+
+
+def make_graphs(dynamic_analysis):
+    G = nx.Graph()
+
+    model_names = set([])
+
+    for view in dynamic_analysis:
+        G.add_node(view['view_name'], type='View')
+        for model in view['db_info']:
+            model_name = model['model'].replace('"', '').replace("'", "")
+            if model_name not in model_names:
+                model_names.add(model['model'])
+                G.add_node(model['model'], type='Model')
+            G.add_edge(view['view_name'], model['model'], weight=model['usage'])
+    print(".")
+
+    groups = set(nx.get_node_attributes(G,'type').values())
+
+    mapping = dict(zip(sorted(groups), itertools.count()))
+    nodes = G.nodes()
+    colors = [mapping[G.node[n]['type']] for n in nodes]
+
+    multi_graph = []
+
+    comp = girvan_newman(G)
+    k = 4
+    for communities in itertools.islice(comp, k):
+        community_graph = nx.Graph()
+        for names in tuple(sorted(c) for c in communities):
+            for name in names:
+                community_graph.add_node(name)
+        multi_graph.append(community_graph)
+        print(".")
+    print(".")
+
+    pos = nx.spring_layout(G)
+    ec = nx.draw_networkx_edges(G, pos, alpha=0.5)
+    nc = nx.draw_networkx_nodes(G, pos, nodelist=nodes, node_color=colors,
+                                with_labels=True, node_size=100, cmap=plt.cm.jet)
+    plt.colorbar(nc)
+    plt.axis('off')
+    plt.show()
+
+    for graph in multi_graph:
+        pos = nx.spring_layout(graph)
+        ec = nx.draw_networkx_edges(graph, pos, alpha=0.5)
+        nc = nx.draw_networkx_nodes(graph, pos, nodelist=nodes, node_color=colors,
+                                    with_labels=True, node_size=100, cmap=plt.cm.jet)
+        plt.colorbar(nc)
+        plt.axis('off')
+        plt.show()
+
+    print("End...")
+    # nx.draw(G, with_labels=True)
+    # plt.show()
 
 
 if __name__ == "__main__":
@@ -190,12 +256,16 @@ if __name__ == "__main__":
                         honeyMaker.parse_file()
                         django_analysis.append(honeyMaker.to_dict())
 
-            new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
-            dynamic_analysis = new_dynamic_analysis.analise_queries()
-            new_dynamic_analysis.calculate_model_usage()
+            django_models = [models['django_models'][0] for models in django_analysis if
+                             len(models['django_models']) > 0]
             urls = parse_url(directory_path)
             static_relations = create_static_relations(django_analysis)
+            new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
+            dynamic_analysis = new_dynamic_analysis.calculate_model_usage()
 
+            # update_relations(static_relations, urls, dynamic_analysis, django_models)
+
+            make_graphs(dynamic_analysis)
             # [view['module'].split(".")[-1] for view in urls if "SalesOrder-without" in view.get('functionCall', [])]
 
             G = create_graph(static_relations)

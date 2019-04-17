@@ -103,7 +103,7 @@ class DynamicAnalysis:
         import os
         if os.path.isfile(directory_path + request_csv_file) and os.path.isfile(directory_path + sql_queries_csv_file):
             read_requests = pd.read_csv(directory_path + request_csv_file)
-            read_requests.to_sql(request_table_name, conn, if_exists='append',
+            read_requests.to_sql(request_table_name, conn, if_exists='replace',
                                  index=False)  # Insert the values from the csv file into the table 'REQUEST'
 
             read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
@@ -114,7 +114,7 @@ class DynamicAnalysis:
 
     def analise_queries(self):
         requests = self.session.query(Request).distinct(Request.path).filter(Request.view_name.isnot(None)).all()
-
+        self.query_analysis = []
         for request in requests:
             tables = []
             sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
@@ -133,7 +133,8 @@ class DynamicAnalysis:
         return self.query_analysis
 
     def calculate_model_usage(self):
-        view_info = {}
+        self.analise_queries()
+        view_info = []
         view_names = set([view['view_name'] for view in self.query_analysis])
 
         for view_name in view_names:
@@ -141,14 +142,14 @@ class DynamicAnalysis:
             view_tables = [item for sublist in view_tables for item in sublist]
             db_info = []
             for db_table in [ele for ind, ele in enumerate(view_tables, 1) if ele not in view_tables[ind:]]:
-                print("{} {}".format(db_table, view_tables.count(db_table)))
+                # print("{} {}".format(db_table, view_tables.count(db_table)))
                 db_info.append({
                     'model': db_table,
                     'usage': view_tables.count(db_table)
                 })
-            view_info[view_name] = db_info
-            # print(view_tables)
+            view_info.append({
+                'view_name': view_name,
+                'db_info': db_info
+            })
 
         return view_info
-
-        # return unique_and_count(self.query_analysis)
