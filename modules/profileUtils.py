@@ -102,13 +102,16 @@ class DynamicAnalysis:
 
         import os
         if os.path.isfile(directory_path + request_csv_file) and os.path.isfile(directory_path + sql_queries_csv_file):
-            read_requests = pd.read_csv(directory_path + request_csv_file)
-            read_requests.to_sql(request_table_name, conn, if_exists='replace',
-                                 index=False)  # Insert the values from the csv file into the table 'REQUEST'
+            try:
+                read_requests = pd.read_csv(directory_path + request_csv_file)
+                read_requests.to_sql(request_table_name, conn, if_exists='replace',
+                                     index=True)  # Insert the values from the csv file into the table 'REQUEST'
 
-            read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
-            read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
-                                    index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+                read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
+                read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
+                                        index=True)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+            except Exception:
+                raise Exception('Cannot import files...')
         else:
             raise Exception("Missing CSVs for dynamic analysis")
 
@@ -117,7 +120,7 @@ class DynamicAnalysis:
         self.query_analysis = []
         for request in requests:
             tables = []
-            sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
+            sql_query = self.session.query(SqlQuery).filter(SqlQuery.request_id.in_([request.id])).all()
             # print(sql_query)
             for query in sql_query:
                 try:
@@ -132,7 +135,7 @@ class DynamicAnalysis:
             })
         return self.query_analysis
 
-    def calculate_model_usage(self):
+    def calculate_model_usage(self, urls = None):
         self.analise_queries()
         view_info = []
         view_names = set([view['view_name'] for view in self.query_analysis])
@@ -147,8 +150,13 @@ class DynamicAnalysis:
                     'model': db_table,
                     'usage': view_tables.count(db_table)
                 })
+            module_name = list(set([view['module'] for view in urls if view['functionCall'] == view_name]))
+            if len(module_name) == 0:
+                module_name = list(set([view['module'] for view in urls if view['module'] == view_name]))
             view_info.append({
                 'view_name': view_name,
+                'modules': module_name,
+                'main_module': module_name[0],
                 'db_info': db_info
             })
 
