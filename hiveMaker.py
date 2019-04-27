@@ -37,38 +37,15 @@ if __name__ == "__main__":
             static_analisys = StaticAnalysis()
             static_analisys.analyze_django_project(directory_path)
 
-            list_of_changes = []
-
-            for idx, graph_cut in enumerate(model_analizer.graph.list_of_graph_cuts):
-                list_of_files = []
-                for node in graph_cut.nodes:
-                    node_file = [file for file in static_analisys.project_analysis if
-                                 (node in file['module_name'] and len(file['django_models']) > 0)]
-                    if node_file:
-                        model_module = node_file[0]['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
-                        model_module = ".".join(model_module)
-                        imports = [imports for imports in static_analisys.project_analysis if
-                                   len(imports['imports']) > 0]
-                        for each_import in imports:
-                            for module in each_import['imports']:
-                                if model_module in module['module']:
-                                    list_of_files.append(model_module + ".py")
-                                    m = each_import['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
-                                    m = ".".join(m)
-                                    list_of_files.append(m)
-                list_of_changes.append({
-                    'graph_cut': graph_cut,
-                    'list_of_files': sorted(set(list_of_files)) if list_of_files else None
-                })
-
-            # model_analizer.show_graph_cuts()
+            list_of_changes = static_analisys.create_report(model_analizer.graph_network.list_of_graph_cuts)
 
             urls = static_analisys.parse_url_file()
             static_relations = static_analisys.create_static_relations(django_analysis)
+
             new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
             dynamic_analysis = new_dynamic_analysis.calculate_model_usage(urls)
 
-            django_model_names = [names for names in model_analizer.graph.main_graph.nodes]
+            django_model_names = [names for names in model_analizer.graph_network.main_graph.nodes]
 
             django_table_and_model_names = []
 
@@ -81,7 +58,7 @@ if __name__ == "__main__":
                         'django_model_name': model_match[0][0]['name'],
                         'db_table': model_match[0][0]['db_table']
                     })
-                    print(".")
+                    # print(".")
 
             transform_analysis = dynamic_analysis
 
@@ -93,17 +70,23 @@ if __name__ == "__main__":
                     if model_name:
                         model['model'] = model_name[0]['django_model_name']
 
-            model_analizer.graph.update(transform_analysis)
+            model_analizer.graph_network.update(transform_analysis)
 
-            system_graph = GraphMaker(dynamic_analysis)
-            system_graph.make_graph()
+            model_analizer.cut_graph()
+
+            model_analizer.show_graph_cuts()
+
+            final_changes = static_analisys.create_report(model_analizer.graph_network.list_of_graph_cuts)
+
+            #system_graph = GraphMaker(dynamic_analysis)
+            #system_graph.make_graph()
             # system_graph.print_graph(system_graph.G)
 
-            multiple_graphs = system_graph.split_graph(parts=2)
-            system_graph.update_splitted_graph(multiple_graphs)
+            #multiple_graphs = system_graph.split_graph(parts=2)
+            #system_graph.update_splitted_graph(multiple_graphs)
 
-            for graph in multiple_graphs:
-                system_graph.print_graph(graph)
+            #for graph in multiple_graphs:
+            #    system_graph.print_graph(graph)
 
             # update_relations(static_relations, urls, dynamic_analysis, django_models)
 

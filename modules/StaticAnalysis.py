@@ -62,6 +62,33 @@ class StaticAnalysis:
             raise Exception("No url file provided")
 
 
+    def create_report(self, list_of_graphs):
+        list_of_changes = []
+
+        for idx, graph_cut in enumerate(list_of_graphs):
+            list_of_files = []
+            for node in graph_cut.nodes:
+                node_file = [file for file in self.project_analysis if
+                             (node in file['module_name'] and len(file['django_models']) > 0)]
+                if node_file:
+                    model_module = node_file[0]['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
+                    model_module = ".".join(model_module)
+                    imports = [imports for imports in self.project_analysis if
+                               len(imports['imports']) > 0]
+                    for each_import in imports:
+                        for module in each_import['imports']:
+                            if model_module in module['module']:
+                                list_of_files.append(model_module + ".py")
+                                m = each_import['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
+                                m = ".".join(m)
+                                list_of_files.append(m)
+            if list_of_files:
+                list_of_changes.append({
+                    'graph_cut': graph_cut,
+                    'list_of_files': sorted(set(list_of_files))
+                })
+        return list_of_changes
+
 
 class HoneyMaker(ast.NodeVisitor):
 
