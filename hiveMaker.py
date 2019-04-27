@@ -1,358 +1,16 @@
-import ast
-import itertools
 import optparse
-import os
 import sys
 import traceback
-from collections import defaultdict
-from fnmatch import fnmatch
 
-import matplotlib.pyplot as plt
-import networkx as nx
-from networkx.algorithms import community
-from networkx.algorithms.community import girvan_newman
-
-from modules.parseUrls import parse_url
+from modules.GraphMaker import GraphMaker
+from modules.ModelParser import ModelParser
+from modules.StaticAnalysis import StaticAnalysis
 from modules.profileUtils import DynamicAnalysis
-
-
-class HoneyMaker(ast.NodeVisitor):
-
-    def __init__(self, file_path):
-        self.names = []
-        self.imports = []
-        self.number_of_imports = {}
-        self.module_path = file_path
-        self.module_name = os.path.basename(file_path)
-        self.code_string = open(file_path).read()
-        self.functions = []
-        self.classes = []
-        self.class_methods = {}
-        self.django_models = []
-        self.django_views = []
-        self.class_names = []
-
-    def to_dict(self):
-        return {
-            'module_name': self.module_name,
-            'module_path': self.module_path,
-            'names': self.names,
-            'classes': self.classes,
-            'class_names': self.class_names,
-            'imports': self.imports,
-            'import_info': self.number_of_imports,
-            'django_models': self.django_models,
-            'django_views': self.django_views
-        }
-
-    @staticmethod
-    def is_django_model(class_):
-        if len(class_.bases) > 0:
-            if isinstance(class_.bases[0], ast.Attribute):
-                if "Model" is class_.bases[0].attr:
-                    return True
-        return False
-
-    def parse_django_model(self, django_model):
-        if hasattr(django_model, 'body'):
-            for class_body in django_model.body:
-                if isinstance(class_body, ast.ClassDef):
-                    if "Meta" in class_body.name:
-                        for model_meta_class_body in class_body.body:
-                            if isinstance(model_meta_class_body, ast.Assign):
-                                if model_meta_class_body.targets[0].id == 'db_table':
-                                    self.django_models.append({
-                                        'name': django_model.name,
-                                        'db_table': model_meta_class_body.value.s
-                                    })
-
-    @staticmethod
-    def is_django_view(class_):
-        if len(class_.bases) > 0:
-            if isinstance(class_.bases[0], ast.Name):
-                if hasattr(class_.bases[0], 'id'):
-                    if "viewset" in class_.bases[0].id.lower():
-                        return True
-        return False
-
-    def parse_django_view(self, django_view):
-        functions = [
-            function for function in django_view.body if isinstance(function, ast.FunctionDef)
-        ]
-        self.django_views.append({
-            'name': django_view.name,
-            'methods': [function.name for function in functions if hasattr(function, "name")]
-        })
-
-    def parse_file(self):
-        try:
-            node = ast.parse(self.code_string)
-            self.functions = [n for n in node.body if isinstance(n, ast.FunctionDef)]
-            self.classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
-            self.class_names = [class_name.name for class_name in self.classes]
-
-            for class_ in self.classes:
-                if self.is_django_model(class_):
-                    self.parse_django_model(class_)
-                if self.is_django_view(class_):
-                    self.parse_django_view(class_)
-
-                methods = [n for n in class_.body if isinstance(n, ast.FunctionDef)]
-                self.class_methods = [method.name for method in methods]
-
-            self.generic_visit(node)
-            self.calculate_imports()
-        except Exception as e:
-            print("Bug - {}".format(str(e)))
-
-    def visit_ImportFrom(self, node):
-        module = node.module
-        for n in node.names:
-            self.imports.append({
-                'module': module,
-                'name': n.name,  # .split('.'),
-                'asname': n.asname,
-                'is_model': True if any("model" in module for module in module.split(".")) else False
-            })
-
-    def visit_Name(self, node):
-        if hasattr(node, 'id'):
-            self.names.append({
-                'class': node.id
-            })
-
-    def calculate_imports(self):
-        for my_import in self.imports:
-            self.number_of_imports[my_import['name']] = 0
-            my_import.update({'usage': 0})
-
-        for my_import in self.imports:
-            for my_class in self.names:
-                if my_class['class'] == my_import['name']:
-                    my_import['usage'] += 1
-                    self.number_of_imports[my_import['name']] += 1
-
-    def get_classes(self, node):
-        self.classes = [n for n in node.body if isinstance(n, ast.ClassDef)]
-        for _class in self.classes:
-            # print("Class name:", _class.name)
-            methods = [n for n in _class.body if isinstance(n, ast.FunctionDef)]
-            for method in methods:
-                self.class_methods[_class.name] = method
-
-
-def create_static_relations(module_list):
-    relations = defaultdict(list)
-    for module in module_list:
-        for _import in module.get('imports', []):
-            for _module in module_list:
-                for class_module in _module.get('classes', []):
-                    # print("{} - {}".format(_import['name'] , class_module.name))
-                    if _import.get('name', []) == class_module.name:
-                        if len(module['django_views']) > 0:
-                            relations[module['django_views'][0]['name']].append({'name': _import.get('name', None),
-                                                                                 'usage': _import.get('usage', None)})
-    return relations
-
-
-def create_graph(relations):
-    generated_graph = nx.Graph()
-    for k, v in relations.items():
-        for new_edge in v:
-            # print("Node:{} - {} - W:{}".format(k, new_edge['name'], new_edge['usage']))
-            generated_graph.add_edge(k, new_edge['name'], weight=new_edge['usage'])
-
-    return generated_graph
-
-
-def update_relations(static_relations, urls, dynamic_analysis, django_models):
-    for relation in static_relations:
-        for function in [url['name'] for url in urls if relation.lower() in url['module'].split(".")[-1].lower()]:
-            dynamic_data = dynamic_analysis.get(function)
-            if dynamic_data:
-                print(dynamic_data)
-
-
-class GraphMaker:
-
-    def __init__(self, data):
-        self.data = data
-        self.G = nx.Graph()
-
-    def reset_grah(self):
-        self.G = nx.Graph()
-
-    def make_graph(self):
-        model_names = set([])
-        for view in self.data:
-            self.G.add_node(view['main_module'], type='View')
-            for model in view['db_info']:
-                model_name = model['model'].replace('"', '').replace("'", "")
-                if model_name not in model_names:
-                    model_names.add(model['model'])
-                    self.G.add_node(model['model'], type='Model')
-                self.G.add_edge(view['main_module'], model['model'], weight=model['usage'])
-
-    def graph_type(self, type, graph=None):
-        if graph is None:
-            graph = self.G
-        return (n for n, v in graph.nodes(data=True) if v['type'].lower() == type.lower())
-
-    def split_graph(self, graph_to_split = None, parts=1):
-        if graph_to_split is None:
-            graph_to_split = self.G
-
-        multi_graph = []
-
-        comp = girvan_newman(graph_to_split)
-
-        def community_generator(graph):
-            communities_generator = community.girvan_newman(graph)
-
-            top_level_communities = next(communities_generator)
-            next_level_communities = next(communities_generator)
-
-            return next_level_communities # , top_level_communities
-
-        next_level_communities = community_generator(graph_to_split)
-
-        for lvl_comunnity in sorted(map(sorted, next_level_communities)):
-            community_graph = nx.Graph()
-            for node in lvl_comunnity:
-                # for node in nodes:
-                community_graph.add_node(node)
-            for node_in_community in list(community_graph.nodes):
-                try:
-                    relations = [relation for relation in self.G.edges(node_in_community)]
-                    for relation in relations:
-                        if community_graph.has_node(relation[0]) and community_graph.has_node(relation[1]):
-                            relation_weight = self.G[relation[0]][relation[1]].get('weight', 0)
-                            community_graph.add_edge(node_in_community, relation, weigth=relation_weight)
-                        else:
-                            print("Missing: {}".format(relation[1] if community_graph.has_node(relation[0]) else relation[0]))
-                except Exception as e:
-                    print(traceback.format_exc())
-                    print("error: {}".format(str(e)))
-            # for n_comunnity in sorted(map(sorted, next_communities)):
-            #    print(n_comunnity)
-            multi_graph.append(community_graph)
-
-        k = parts
-        for communities in itertools.islice(comp, k):
-            community_graph = nx.Graph()
-            for names in tuple(sorted(c) for c in communities):
-                for name in names:
-                    type = 'Model' if name in self.graph_type('Model', graph_to_split) else 'View'
-                    community_graph.add_node(name, type=type)
-            multi_graph.append(community_graph)
-        return multi_graph
-
-    def update_splitted_graph(self, multi_graph: [nx.Graph]):
-        for graph in multi_graph:
-            missing_in_grap = []
-            for node in graph.nodes:
-                try:
-                    node_info = [relation for relation in self.G.edges(node)]
-                    # node_info = list(sum(node_info, ()))
-                    for relation in node_info:
-                        if graph.has_node(relation[0]) and graph.has_node(relation[1]):
-                            relation_weight = self.G[relation[0]][relation[1]].get('weight', 0)
-                            graph.add_edge(relation[0], relation[1], weight=relation_weight)
-                        else:
-                            missing_in_grap.append({
-                                'missing': relation[1] if graph.has_node(relation[0]) else relation[0]
-                            })
-                except Exception as e:
-                    print(traceback.format_exc())
-                    print("error: {}".format(str(e)))
-
-    def print_graph(self, graph_to_print=None):
-        if graph_to_print is None:
-            graph_to_print = self.G
-
-        groups = set(nx.get_node_attributes(graph_to_print, 'type').values())
-
-        mapping = dict(zip(sorted(groups), itertools.count()))
-        nodes = graph_to_print.nodes()
-        colors = []
-        if mapping:
-            colors = [mapping[graph_to_print.node[n]['type']] for n in nodes]
-
-        pos = nx.spring_layout(graph_to_print, k=0.15, iterations=20)  # nx.spring_layout(G)
-        ec = nx.draw_networkx_edges(graph_to_print, pos, alpha=0.5)
-        if colors:
-            nc = nx.draw_networkx_nodes(graph_to_print, pos, nodelist=nodes, node_color=colors,
-                                        with_labels=True, node_size=100, cmap=plt.cm.jet)
-            plt.colorbar(nc)
-
-        plt.axis('off')
-        nx.draw(graph_to_print, with_labels=True)
-        plt.show()
-
-
-def make_graphs(dynamic_analysis):
-    def graph_type(graph, type):
-        return (n for n, v in graph.nodes(data=True) if v['type'].lower() == type.lower())
-
-    G = nx.Graph()
-
-    model_names = set([])
-
-    for view in dynamic_analysis:
-        G.add_node(view['main_module'], type='View')
-        for model in view['db_info']:
-            model_name = model['model'].replace('"', '').replace("'", "")
-            if model_name not in model_names:
-                model_names.add(model['model'])
-                G.add_node(model['model'], type='Model')
-            G.add_edge(view['main_module'], model['model'], weight=model['usage'])
-
-    groups = set(nx.get_node_attributes(G, 'type').values())
-
-    mapping = dict(zip(sorted(groups), itertools.count()))
-    nodes = G.nodes()
-    colors = [mapping[G.node[n]['type']] for n in nodes]
-
-    multi_graph = []
-
-    comp = girvan_newman(G)
-    k = 4
-    for communities in itertools.islice(comp, k):
-        community_graph = nx.Graph()
-        for names in tuple(sorted(c) for c in communities):
-            for name in names:
-                community_graph.add_node(name)
-        multi_graph.append(community_graph)
-
-    pos = nx.spring_layout(G, k=0.15, iterations=20)  # nx.spring_layout(G)
-    ec = nx.draw_networkx_edges(G, pos, alpha=0.5)
-    nc = nx.draw_networkx_nodes(G, pos, nodelist=nodes, node_color=colors,
-                                with_labels=True, node_size=100, cmap=plt.cm.jet)
-    plt.colorbar(nc)
-    plt.axis('off')
-    nx.draw(G, with_labels=True)
-    plt.show()
-
-    for graph in multi_graph:
-        pos = nx.spring_layout(G, k=0.15, iterations=20)  # nx.spring_layout(graph)
-        ec = nx.draw_networkx_edges(graph, pos, alpha=0.5)
-        nc = nx.draw_networkx_nodes(graph, pos, nodelist=nodes, node_color=colors,
-                                    with_labels=True, node_size=100, cmap=plt.cm.jet)
-        plt.colorbar(nc)
-        plt.axis('off')
-        nx.draw(G, with_labels=True)
-        plt.show()
-
-    print("End...")
-    # nx.draw(G, with_labels=True)
-    # plt.show()
-
 
 if __name__ == "__main__":
 
     db_name = 'Test.db'
     directory_path = 'Samples/3pl_api'
-    file_pattern = '*.py'
 
     import_list = []
     file_info = []
@@ -370,19 +28,72 @@ if __name__ == "__main__":
 
     if options.pyfile:
         try:
-            for path, subdirs, files in os.walk(directory_path):
-                for name in files:
-                    if fnmatch(name, file_pattern):
-                        honeyMaker = HoneyMaker(os.path.join(path, name))
-                        honeyMaker.parse_file()
-                        django_analysis.append(honeyMaker.to_dict())
 
-            django_models = [models['django_models'][0] for models in django_analysis if
-                             len(models['django_models']) > 0]
-            urls = parse_url(directory_path)
-            static_relations = create_static_relations(django_analysis)
+            model_analizer = ModelParser(directory_path)
+            model_analizer.read_model_file()
+            model_analizer.create_graph()
+            model_analizer.cut_graph()
+
+            static_analisys = StaticAnalysis()
+            static_analisys.analyze_django_project(directory_path)
+
+            list_of_changes = []
+
+            for idx, graph_cut in enumerate(model_analizer.graph.list_of_graph_cuts):
+                list_of_files = []
+                for node in graph_cut.nodes:
+                    node_file = [file for file in static_analisys.project_analysis if
+                                 (node in file['module_name'] and len(file['django_models']) > 0)]
+                    if node_file:
+                        model_module = node_file[0]['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
+                        model_module = ".".join(model_module)
+                        imports = [imports for imports in static_analisys.project_analysis if
+                                   len(imports['imports']) > 0]
+                        for each_import in imports:
+                            for module in each_import['imports']:
+                                if model_module in module['module']:
+                                    list_of_files.append(model_module + ".py")
+                                    m = each_import['module_path'].replace("/", ".").replace(".py", "").split(".")[-2:]
+                                    m = ".".join(m)
+                                    list_of_files.append(m)
+                list_of_changes.append({
+                    'graph_cut': graph_cut,
+                    'list_of_files': sorted(set(list_of_files)) if list_of_files else None
+                })
+
+            # model_analizer.show_graph_cuts()
+
+            urls = static_analisys.parse_url_file()
+            static_relations = static_analisys.create_static_relations(django_analysis)
             new_dynamic_analysis = DynamicAnalysis(db_name, directory_path)
             dynamic_analysis = new_dynamic_analysis.calculate_model_usage(urls)
+
+            django_model_names = [names for names in model_analizer.graph.main_graph.nodes]
+
+            django_table_and_model_names = []
+
+            for django_model in django_model_names:
+                model_list = [static_django_model['django_models'] for static_django_model in
+                              static_analisys.project_analysis if len(static_django_model['django_models']) > 0]
+                model_match = [model for model in model_list if django_model.lower() == model[0]['name'].lower()]
+                if model_match:
+                    django_table_and_model_names.append({
+                        'django_model_name': model_match[0][0]['name'],
+                        'db_table': model_match[0][0]['db_table']
+                    })
+                    print(".")
+
+            transform_analysis = dynamic_analysis
+
+            for view in transform_analysis:
+                for model in view['db_info']:
+                    model_name = [django_name for django_name in django_table_and_model_names if
+                                  django_name['db_table'].replace('"', '').lower() == model['model'].replace('"',
+                                                                                                             '').lower()]
+                    if model_name:
+                        model['model'] = model_name[0]['django_model_name']
+
+            model_analizer.graph.update(transform_analysis)
 
             system_graph = GraphMaker(dynamic_analysis)
             system_graph.make_graph()
@@ -396,12 +107,8 @@ if __name__ == "__main__":
 
             # update_relations(static_relations, urls, dynamic_analysis, django_models)
 
-            make_graphs(dynamic_analysis)
             # [view['module'].split(".")[-1] for view in urls if "SalesOrder-without" in view.get('functionCall', [])]
 
-            G = create_graph(static_relations)
-
-            nx.write_gexf(G, "output/{}.gexf".format(directory_path.split("/")[1]))
 
         except Exception as e:
             print(traceback.format_exc())
