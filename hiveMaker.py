@@ -2,7 +2,6 @@ import optparse
 import sys
 import traceback
 
-from modules.GraphMaker import GraphMaker
 from modules.ModelParser import ModelParser
 from modules.StaticAnalysis import StaticAnalysis
 from modules.profileUtils import DynamicAnalysis
@@ -37,7 +36,7 @@ if __name__ == "__main__":
             static_analisys = StaticAnalysis()
             static_analisys.analyze_django_project(directory_path)
 
-            list_of_changes = static_analisys.create_report(model_analizer.graph_network.list_of_graph_cuts)
+            list_of_changes = static_analisys.create_report(model_analizer.graph_network)
 
             urls = static_analisys.parse_url_file()
             static_relations = static_analisys.create_static_relations(django_analysis)
@@ -74,34 +73,53 @@ if __name__ == "__main__":
 
             model_analizer.cut_graph()
 
-            model_analizer.show_graph_cuts()
+            model_analizer.show_graph()
 
-            final_changes = static_analisys.create_report(model_analizer.graph_network.list_of_graph_cuts)
+            # model_analizer.show_graph_cuts()
 
-            #system_graph = GraphMaker(dynamic_analysis)
-            #system_graph.make_graph()
+            final_changes = static_analisys.create_report(model_analizer.graph_network, transform_analysis)
+
+            files_analyzed = len(static_analisys.project_analysis)
+            django_views = [names for names in static_analisys.project_analysis if len(names['django_views']) > 0]
+            django_models = [names for names in static_analisys.project_analysis if len(names['django_models']) > 0]
+            print("""
+Total Files: {}
+Django_Views: {}
+Django_Models: {}
+""".format(files_analyzed,len(django_views), len(django_models)))
+            for changes in final_changes:
+                print("""
+GraphNumber: {}
+list_of_files: {}
+
+
+instructions: {}
+                """.format(changes['graph_number'], [file for file in changes['list_of_files']],
+                           [change for change in changes['instructions']]))
+
+            # system_graph = GraphMaker(dynamic_analysis)
+            # system_graph.make_graph()
             # system_graph.print_graph(system_graph.G)
 
-            #multiple_graphs = system_graph.split_graph(parts=2)
-            #system_graph.update_splitted_graph(multiple_graphs)
+            # multiple_graphs = system_graph.split_graph(parts=2)
+            # system_graph.update_splitted_graph(multiple_graphs)
 
-            #for graph in multiple_graphs:
+            # for graph in multiple_graphs:
             #    system_graph.print_graph(graph)
 
             # update_relations(static_relations, urls, dynamic_analysis, django_models)
 
             # [view['module'].split(".")[-1] for view in urls if "SalesOrder-without" in view.get('functionCall', [])]
 
-
         except Exception as e:
             print(traceback.format_exc())
             print("error: {}".format(e))
 
-    print("""
-        Directory: {}
-        Import Data: {}
-        Class List: {}
-    """.format(directory_path, import_list, file_info))
+    # print("""
+    #     Directory: {}
+    #     Import Data: {}
+    #     Class List: {}
+    # """.format(directory_path, import_list, file_info))
 
     print("Existing")
     sys.exit(0)

@@ -10,6 +10,7 @@ class GraphNetwork:
     def __init__(self):
         self.main_graph = nx.Graph()
         self.list_of_graph_cuts = []
+        self.missing_files = []
 
 
     def update(self, transform_analysis):
@@ -58,6 +59,8 @@ class GraphNetwork:
         top_level_communities = next(communities_generator)
         next_level_communities = next(communities_generator)
 
+        list_of_missing_files = []
+
         self.list_of_graph_cuts = []
         for lvl_comunnity in sorted(map(sorted, next_level_communities)):
             new_cut = nx.Graph()
@@ -66,6 +69,7 @@ class GraphNetwork:
             self.list_of_graph_cuts.append(new_cut)
 
         for cut in self.list_of_graph_cuts:
+            missing_files = []
             for node in cut.nodes:
                 relations = [relation for relation in graph_to_cut.edges(node)]
                 # relation = list(sum(relation, ()))
@@ -75,6 +79,11 @@ class GraphNetwork:
                         cut.add_edge(relation[1], relation[0], weigth=relation_weight)
                     else:
                         print("Missing: {}".format(relation[1] if cut.has_node(relation[0]) else relation[0]))
+                        missing_files.append({
+                            'file': relation[1] if cut.has_node(relation[0]) else relation[0]
+                        })
+            list_of_missing_files.append(missing_files)
+        self.missing_files = list_of_missing_files
         return self.list_of_graph_cuts
 
     def print_graph(self, graph_to_print=None):

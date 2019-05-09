@@ -1,9 +1,11 @@
+import itertools
 import re
 
 import pandas as pd
 import sqlalchemy as db
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from itertools import groupby
 
 Base = declarative_base()
 
@@ -72,21 +74,14 @@ def parse_tables_in_query(sql_str):
             get_next = False
         get_next = tok.lower() in ["from", "join"]
 
-    return result
+    return {
+        'tables': result,
+        'query_type': sql_str.split(" ")[0]
+    }
 
 
-from itertools import groupby
-
-
-def canonicalize_dict(x):
-    "Return a (key, value) list sorted by the hash of the key"
-    return sorted(x.items(), key=lambda x: hash(x[0]))
-
-
-def unique_and_count(lst):
-    "Return a list of unique dicts with a 'count' key added"
-    grouper = groupby(sorted(map(canonicalize_dict, lst)))
-    return [dict(k + [("count", len(list(g)))]) for k, g in grouper]
+def parse_query_type(sql_str: str) -> str:
+    return sql_str.split(" ")[0]
 
 
 class DynamicAnalysis:
@@ -131,7 +126,8 @@ class DynamicAnalysis:
             self.query_analysis.append({
                 'path': request.path,
                 'view_name': request.view_name,
-                'tables': [item for sublist in tables for item in sublist]
+                'tables': [item for sublist in tables for item in sublist['tables']],
+                'type': [query_type['query_type'] for query_type in tables]
             })
         return self.query_analysis
 
@@ -146,9 +142,12 @@ class DynamicAnalysis:
             db_info = []
             for db_table in [ele for ind, ele in enumerate(view_tables, 1) if ele not in view_tables[ind:]]:
                 # print("{} {}".format(db_table, view_tables.count(db_table)))
+                model_type = set(list(itertools.chain(*[teste['type'] for teste in self.query_analysis if
+                                       any(db_table in table for table in teste['tables'])])))
                 db_info.append({
                     'model': db_table,
-                    'usage': view_tables.count(db_table)
+                    'usage': view_tables.count(db_table),
+                    'model_type': model_type
                 })
             module_name = list(set([view['module'] for view in urls if view['functionCall'] == view_name]))
             if len(module_name) == 0:

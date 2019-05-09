@@ -4,6 +4,8 @@ import re
 from collections import defaultdict
 from fnmatch import fnmatch
 
+from modules.GraphNetwork import GraphNetwork
+
 
 class StaticAnalysis:
 
@@ -61,10 +63,36 @@ class StaticAnalysis:
         else:
             raise Exception("No url file provided")
 
+    def create_report(self, graph_model: GraphNetwork, analysis=None):
 
-    def create_report(self, list_of_graphs):
+        if analysis:
+            files = []
+            for idx, cut in enumerate(graph_model.list_of_graph_cuts):
+
+                missing_modules_in_cut = self._analyse_graph_cut(cut, graph_model.main_graph)
+                instructions = []
+                for missing_module in missing_modules_in_cut:
+                    module_instructions = None
+                    views_where_module_occurs = [view['db_info'] for view in analysis if
+                                                 any(model['model'] == missing_module for model in view['db_info'])]
+                    module = [y for x in views_where_module_occurs for y in x if
+                              y['model'].lower() == missing_module.lower()]
+                    if module:
+                        if any(model_type.lower() == 'select' for model_type in module[0]['model_type']):
+                            module_instructions = """Model: {} - has high demand for read operations, to keep functionallity make remote calls to the service containing the model.""".format(
+                                module[0]['model'])
+                        if any(model_type.lower() == 'update' for model_type in module[0]['model_type']):
+                            module_instructions = """Model: {} - has high demand for write operations, to keep functionallity duplicate the model and sync write operations between services""".format(
+                                module[0]['model'])
+                    if module_instructions:
+                        instructions.append(module_instructions)
+                files.append({
+                    'graph': idx,
+                    'instructions': instructions if instructions is not None else 'Everything is good'
+                })
+
         list_of_changes = []
-
+        list_of_graphs = graph_model.list_of_graph_cuts
         for idx, graph_cut in enumerate(list_of_graphs):
             list_of_files = []
             for node in graph_cut.nodes:
@@ -85,9 +113,27 @@ class StaticAnalysis:
             if list_of_files:
                 list_of_changes.append({
                     'graph_cut': graph_cut,
-                    'list_of_files': sorted(set(list_of_files))
+                    'graph_number': idx,
+                    'list_of_files': sorted(set(list_of_files)),
+                    'instructions': files[idx]['instructions'] if analysis else 'No instructions'
                 })
         return list_of_changes
+
+    def _analyse_graph_cut(self, graph_cut, original_graph):
+        missing_files = []
+        for node in graph_cut.nodes:
+            relations = [relation for relation in original_graph.edges(node)]
+            # relation = list(sum(relation, ()))
+            for relation in relations:
+                if graph_cut.has_node(relation[0]) and graph_cut.has_node(relation[1]):
+                    relation_weight = original_graph[relation[0]][relation[1]].get('weight', 0)
+                    graph_cut.add_edge(relation[1], relation[0], weigth=relation_weight)
+                else:
+                    print("Missing: {}".format(relation[1] if graph_cut.has_node(relation[0]) else relation[0]))
+                    missing_files.append(
+                        relation[1] if graph_cut.has_node(relation[0]) else relation[0]
+                    )
+        return missing_files
 
 
 class HoneyMaker(ast.NodeVisitor):
@@ -213,4 +259,3 @@ class HoneyMaker(ast.NodeVisitor):
             methods = [n for n in _class.body if isinstance(n, ast.FunctionDef)]
             for method in methods:
                 self.class_methods[_class.name] = method
-
