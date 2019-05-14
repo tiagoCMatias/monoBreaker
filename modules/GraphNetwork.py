@@ -78,7 +78,7 @@ class GraphNetwork:
                         relation_weight = graph_to_cut[relation[0]][relation[1]].get('weight', 0)
                         cut.add_edge(relation[1], relation[0], weigth=relation_weight)
                     else:
-                        print("Missing: {}".format(relation[1] if cut.has_node(relation[0]) else relation[0]))
+                        # print("Missing: {}".format(relation[1] if cut.has_node(relation[0]) else relation[0]))
                         missing_files.append({
                             'file': relation[1] if cut.has_node(relation[0]) else relation[0]
                         })
