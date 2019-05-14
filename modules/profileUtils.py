@@ -1,9 +1,11 @@
+import itertools
 import re
 
 import pandas as pd
 import sqlalchemy as db
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from itertools import groupby
 
 Base = declarative_base()
 
@@ -72,21 +74,14 @@ def parse_tables_in_query(sql_str):
             get_next = False
         get_next = tok.lower() in ["from", "join"]
 
-    return result
+    return {
+        'tables': result,
+        'query_type': sql_str.split(" ")[0]
+    }
 
 
-from itertools import groupby
-
-
-def canonicalize_dict(x):
-    "Return a (key, value) list sorted by the hash of the key"
-    return sorted(x.items(), key=lambda x: hash(x[0]))
-
-
-def unique_and_count(lst):
-    "Return a list of unique dicts with a 'count' key added"
-    grouper = groupby(sorted(map(canonicalize_dict, lst)))
-    return [dict(k + [("count", len(list(g)))]) for k, g in grouper]
+def parse_query_type(sql_str: str) -> str:
+    return sql_str.split(" ")[0]
 
 
 class DynamicAnalysis:
@@ -102,13 +97,16 @@ class DynamicAnalysis:
 
         import os
         if os.path.isfile(directory_path + request_csv_file) and os.path.isfile(directory_path + sql_queries_csv_file):
-            read_requests = pd.read_csv(directory_path + request_csv_file)
-            read_requests.to_sql(request_table_name, conn, if_exists='replace',
-                                 index=False)  # Insert the values from the csv file into the table 'REQUEST'
+            try:
+                read_requests = pd.read_csv(directory_path + request_csv_file)
+                read_requests.to_sql(request_table_name, conn, if_exists='replace',
+                                     index=True)  # Insert the values from the csv file into the table 'REQUEST'
 
-            read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
-            read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
-                                    index=False)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+                read_sql_queries = pd.read_csv(directory_path + sql_queries_csv_file)
+                read_sql_queries.to_sql(sql_queries_table_name, conn, if_exists='replace',
+                                        index=True)  # Replace the values from the csv file into the table 'SQL_REQUESTS'
+            except Exception:
+                raise Exception('Cannot import files...')
         else:
             raise Exception("Missing CSVs for dynamic analysis")
 
@@ -117,7 +115,7 @@ class DynamicAnalysis:
         self.query_analysis = []
         for request in requests:
             tables = []
-            sql_query = self.session.query(SqlQuery).filter(SqlQuery.id.in_(request.id)).all()
+            sql_query = self.session.query(SqlQuery).filter(SqlQuery.request_id.in_([request.id])).all()
             # print(sql_query)
             for query in sql_query:
                 try:
@@ -128,11 +126,12 @@ class DynamicAnalysis:
             self.query_analysis.append({
                 'path': request.path,
                 'view_name': request.view_name,
-                'tables': [item for sublist in tables for item in sublist]
+                'tables': [item for sublist in tables for item in sublist['tables']],
+                'type': [query_type['query_type'] for query_type in tables]
             })
         return self.query_analysis
 
-    def calculate_model_usage(self):
+    def calculate_model_usage(self, urls = None):
         self.analise_queries()
         view_info = []
         view_names = set([view['view_name'] for view in self.query_analysis])
@@ -143,12 +142,20 @@ class DynamicAnalysis:
             db_info = []
             for db_table in [ele for ind, ele in enumerate(view_tables, 1) if ele not in view_tables[ind:]]:
                 # print("{} {}".format(db_table, view_tables.count(db_table)))
+                model_type = set(list(itertools.chain(*[teste['type'] for teste in self.query_analysis if
+                                       any(db_table in table for table in teste['tables'])])))
                 db_info.append({
                     'model': db_table,
-                    'usage': view_tables.count(db_table)
+                    'usage': view_tables.count(db_table),
+                    'model_type': model_type
                 })
+            module_name = list(set([view['module'] for view in urls if view['functionCall'] == view_name]))
+            if len(module_name) == 0:
+                module_name = list(set([view['module'] for view in urls if view['module'] == view_name]))
             view_info.append({
                 'view_name': view_name,
+                'modules': module_name,
+                'main_module': module_name[0],
                 'db_info': db_info
             })
 
