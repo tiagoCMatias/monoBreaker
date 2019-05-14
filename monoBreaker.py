@@ -57,7 +57,6 @@ if __name__ == "__main__":
                         'django_model_name': model_match[0][0]['name'],
                         'db_table': model_match[0][0]['db_table']
                     })
-                    # print(".")
 
             transform_analysis = dynamic_analysis
 
@@ -86,7 +85,7 @@ if __name__ == "__main__":
 Total Files: {}
 Django_Views: {}
 Django_Models: {}
-""".format(files_analyzed,len(django_views), len(django_models)))
+""".format(files_analyzed, len(django_views), len(django_models)))
             for changes in final_changes:
                 print("""
 GraphNumber: {}
