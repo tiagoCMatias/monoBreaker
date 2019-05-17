@@ -12,6 +12,8 @@ class GraphNetwork:
         self.list_of_graph_cuts = []
         self.missing_files = []
 
+    def remove_isolated_nodes(self):
+        self.main_graph.remove_nodes_from(list(nx.isolates(self.main_graph)))
 
     def update(self, transform_analysis):
         update_graph = self.main_graph

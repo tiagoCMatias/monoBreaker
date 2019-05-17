@@ -6,14 +6,10 @@ from modules.ModelParser import ModelParser
 from modules.StaticAnalysis import StaticAnalysis
 from modules.profileUtils import DynamicAnalysis
 
-def main():
 
+def main():
     db_name = 'Test.db'
     directory_path = 'Samples/3pl_api'
-
-    import_list = []
-    file_info = []
-    django_analysis = []
 
     parser = optparse.OptionParser()
     parser.add_option("--pyfile", action="store", dest="pyfile",
@@ -39,10 +35,12 @@ def main():
             static_analisys = StaticAnalysis()
             static_analisys.analyze_django_project(directory_path)
 
-            list_of_changes = static_analisys.create_report(model_analizer.graph_network)
+            # list_of_changes = static_analisys.create_report(model_analizer.graph_network)
 
             urls = static_analisys.parse_url_file()
-            static_relations = static_analisys.create_static_relations(django_analysis)
+            # static_relations = static_analisys.create_static_relations(django_analysis)
+
+            # sorted(model_analizer.graph_network.main_graph.degree, key=lambda x: x[1], reverse=False)
 
             show_graph = input("show initial graph (y/n):")
 
@@ -88,7 +86,8 @@ def main():
                                       "1: Show Updated Graph\n"
                                       "2: Show graph cuts\n"
                                       "3: Create Report\n"
-                                      "4: Exit\n")
+                                      "4: Delete Single Nodes\n"
+                                      "Other input will terminate the program\n")
                 if final_options.isdigit():
                     final_options = int(final_options)
                     if final_options == 1:
@@ -116,17 +115,15 @@ def main():
                                   "".format(changes['graph_number'], [file for file in changes['list_of_files']],
                                             [change for change in changes['instructions']]))
                     if final_options == 4:
+                        model_analizer.graph_network.remove_isolated_nodes()
+                        model_analizer.cut_graph()
+
+                    if final_options == 0:
                         break
 
         except Exception as e:
             print(traceback.format_exc())
             print("error: {}".format(e))
-
-    # print("""
-    #     Directory: {}
-    #     Import Data: {}
-    #     Class List: {}
-    # """.format(directory_path, import_list, file_info))
 
     print("Existing")
     sys.exit(0)
