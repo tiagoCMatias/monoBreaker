@@ -12,6 +12,8 @@ class GraphNetwork:
         self.list_of_graph_cuts = []
         self.missing_files = []
 
+    def remove_isolated_nodes(self):
+        self.main_graph.remove_nodes_from(list(nx.isolates(self.main_graph)))
 
     def update(self, transform_analysis):
         update_graph = self.main_graph
@@ -78,7 +80,7 @@ class GraphNetwork:
                         relation_weight = graph_to_cut[relation[0]][relation[1]].get('weight', 0)
                         cut.add_edge(relation[1], relation[0], weigth=relation_weight)
                     else:
-                        print("Missing: {}".format(relation[1] if cut.has_node(relation[0]) else relation[0]))
+                        # print("Missing: {}".format(relation[1] if cut.has_node(relation[0]) else relation[0]))
                         missing_files.append({
                             'file': relation[1] if cut.has_node(relation[0]) else relation[0]
                         })
