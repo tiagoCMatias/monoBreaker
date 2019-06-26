@@ -20,7 +20,7 @@ pip install -r requirements.txt
 In your Django Project use [django_extensions](https://github.com/django-extensions/django-extensions) and [Silk](https://github.com/jazzband/django-silk)  
 
 Your `settings.py` should look like the following:
-
+```python
 MIDDLEWARE = [
     ...,
     'silk.middleware.SilkyMiddleware',
@@ -33,9 +33,17 @@ INSTALLED_APPS = (
     'django_extensions',
     'silk'
 )
+```
 
 ## Usage
 
+Extract data and models information to the source folder of you Django Project:
+```python
+python manage.py graph_models app_1 app_2 --json > models.json
+python manage.py show_urls > urls.txt
+```
+
+Run MonoBreaker:
 ```python
 Usage: python monoBreaker.py [options]
 
