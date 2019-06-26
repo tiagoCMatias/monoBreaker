@@ -19,6 +19,21 @@ pip install -r requirements.txt
 ```
 In your Django Project use [django_extensions](https://github.com/django-extensions/django-extensions) and [Silk](https://github.com/jazzband/django-silk)  
 
+Your `settings.py` should look like the following:
+
+MIDDLEWARE = [
+    ...,
+    'silk.middleware.SilkyMiddleware',
+    ...
+]
+
+INSTALLED_APPS = (
+    ...
+    'rest_framework',
+    'django_extensions',
+    'silk'
+)
+
 ## Usage
 
 ```python
