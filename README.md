@@ -1,6 +1,6 @@
 # MonoBreaker
 
-MonoBreaker is a Python program for breaking Django Monoliths.
+MonoBreaker is a Python program for decomposing Monolithic Django Application towards Microservices.
 
 ## Requirements
 
