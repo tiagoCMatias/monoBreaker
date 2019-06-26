@@ -38,13 +38,13 @@ INSTALLED_APPS = (
 ## Usage
 
 Extract data and models information to the source folder of you Django Project:
-```python
+```text
 python manage.py graph_models app_1 app_2 --json > models.json
 python manage.py show_urls > urls.txt
 ```
 
 Run MonoBreaker:
-```python
+```text
 Usage: python monoBreaker.py [options]
 
 Options:
