@@ -4,8 +4,6 @@ MonoBreaker is a Python program for decomposing Monolithic Django Application to
 
 ## Requirements
 
-MonoBreaker has been tested with:
-
     Django: 1.8+
     Django REST framework: 3.5.1+
     Python: 3.6+
