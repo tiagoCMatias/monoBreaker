@@ -4,6 +4,8 @@ MonoBreaker is a Python program for decomposing Monolithic Django Application to
 
 ## Requirements
 
+The Django project analyzed by MonoBreaker must follow these requirements:
+
     Django: 1.8+
     Django REST framework: 3.5.1+
     Python: 3.6+
@@ -35,11 +37,19 @@ INSTALLED_APPS = (
 
 ## Usage
 
-Extract data and models information to the source folder of you Django Project:
+Extract the following information from your project using the following commands 
 ```text
 python manage.py graph_models app_1 app_2 --json > models.json
 python manage.py show_urls > urls.txt
 ```
+Extract the following tables as CSV files from [Silk](https://github.com/jazzband/django-silk):
+
+```text
+silk_request
+silk_sqlquery
+```
+
+Add the files to the source folder of you Django Project
 
 Run MonoBreaker:
 ```text
