@@ -59,6 +59,7 @@ Options:
   -h, --help           show this help message and exit
   --pydir=PYDIR        Path to Django Project
 
+Example: python monoBreaker.py --pydir=/Projects/DjangoProject
 ```
 
 ## Contributing
