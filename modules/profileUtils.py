@@ -5,7 +5,6 @@ import pandas as pd
 import sqlalchemy as db
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from itertools import groupby
 
 Base = declarative_base()
 
@@ -91,6 +90,17 @@ class DynamicAnalysis:
         session = sessionmaker(bind=self.engine)
         self.session = session()
         self.query_analysis = []
+        self.dynamic_data = []
+
+    def extract_data(self, django_table_and_model_names):
+        dynamic_data = self.dynamic_data
+        for view in dynamic_data:
+            for model in view['db_info']:
+                model_name = [django_name for django_name in django_table_and_model_names if
+                              django_name['db_table'].replace('"', '').lower() == model['model'].replace('"',
+                                                                                                         '').lower()]
+                if model_name:
+                    model['model'] = model_name[0]['django_model_name']
 
     def _create_database(self, directory_path):
         conn = self.engine.connect()
@@ -133,7 +143,7 @@ class DynamicAnalysis:
 
     def calculate_model_usage(self, urls = None):
         self.analise_queries()
-        view_info = []
+        self.dynamic_data = []
         view_names = set([view['view_name'] for view in self.query_analysis])
 
         for view_name in view_names:
@@ -152,11 +162,11 @@ class DynamicAnalysis:
             module_name = list(set([view['module'] for view in urls if view['functionCall'] == view_name]))
             if len(module_name) == 0:
                 module_name = list(set([view['module'] for view in urls if view['module'] == view_name]))
-            view_info.append({
+            self.dynamic_data.append({
                 'view_name': view_name,
                 'modules': module_name,
                 'main_module': module_name[0],
                 'db_info': db_info
             })
 
-        return view_info
+        return self.dynamic_data

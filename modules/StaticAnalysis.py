@@ -44,7 +44,7 @@ class StaticAnalysis:
 
     def parse_url_file(self):
         self.urls = []
-        url_file = self.project_path + '/url.txt'
+        url_file = self.project_path + '/urls.txt'
         if os.path.isfile(url_file):  # True
             with open(url_file) as fp:
                 line = fp.readline()
@@ -59,9 +59,9 @@ class StaticAnalysis:
                     })
                     line = fp.readline()
                     cnt += 1
-            return self.urls
         else:
             raise Exception("No url file provided")
+        return self.urls
 
     def create_report(self, graph_model: GraphNetwork, analysis=None):
 
@@ -79,11 +79,22 @@ class StaticAnalysis:
                               y['model'].lower() == missing_module.lower()]
                     if module:
                         if any(model_type.lower() == 'select' for model_type in module[0]['model_type']):
-                            module_instructions = """Model: {} - has high demand for read operations, to keep functionallity make remote calls to the service containing the model.""".format(
-                                module[0]['model'])
+                            module_instructions = "Missing: {} - Model - Type: {}\n" \
+                                                  "Change files requiring the model\n" \
+                                                  "Possible Refactoring: \n" \
+                                                  "\t - Api Composition\n" \
+                                                  "\t - Synchronous Remote Call\n" \
+                                                  "\t - Asynchronous Remove Call\n".format(module[0]['model'], 'Read')
+                                    #module_instructions = """Model: {} - has high demand for read operations, to keep functionallity make remote calls to the service containing the model.""".format(
+                                # module[0]['model'])
                         if any(model_type.lower() == 'update' for model_type in module[0]['model_type']):
-                            module_instructions = """Model: {} - has high demand for write operations, to keep functionallity duplicate the model and sync write operations between services""".format(
-                                module[0]['model'])
+                            module_instructions = "Missing: {} - Model - Type: {}\n" \
+                                                  "Change files requiring the model\n" \
+                                                  "Possible Refactoring: \n" \
+                                                  "\t - Remote Call\n" \
+                                                  "\t - Saga\n".format(module[0]['model'], 'Write')
+                            # module_instructions = """Model: {} - has high demand for write operations, to keep functionallity duplicate the model and sync write operations between services""".format(
+                            #    module[0]['model'])
                     if module_instructions:
                         instructions.append(module_instructions)
                 files.append({

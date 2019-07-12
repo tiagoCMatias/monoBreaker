@@ -1,0 +1,31 @@
+{
+    "type": "object",
+    "properties": {
+        "title": {
+            "type": [
+                "string"
+            ]
+        },
+        "year": {
+            "type": [
+                "string"
+            ]
+        },
+        "description": {
+            "type": [
+                "string"
+            ]
+        },
+        "category": {
+            "type": [
+                "string"
+            ]
+        }
+    },
+    "required": [
+        "title",
+        "year",
+        "description",
+        "category"
+    ]
+}

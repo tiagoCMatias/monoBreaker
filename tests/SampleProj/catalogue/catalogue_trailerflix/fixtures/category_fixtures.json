@@ -1,0 +1,58 @@
+[
+    {
+        "model": "catalogue.category",
+        "pk": 1,
+        "fields": {
+            "name": "Comedy"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 2,
+        "fields": {
+            "name": "Action"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 3,
+        "fields": {
+            "name": "Terror"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 4,
+        "fields": {
+            "name": "Sci-fi"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 5,
+        "fields": {
+            "name": "Drama"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 6,
+        "fields": {
+            "name": "Romance"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 7,
+        "fields": {
+            "name": "Documentary"
+        }
+    },
+    {
+        "model": "catalogue.category",
+        "pk": 8,
+        "fields": {
+            "name": "Animation"
+        }
+    }
+]
