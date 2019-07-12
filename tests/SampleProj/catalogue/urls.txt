@@ -1,0 +1,48 @@
+/admin/	django.contrib.admin.sites.index	admin:index
+/admin/<app_label>/	django.contrib.admin.sites.app_index	admin:app_list
+/admin/auth/group/	django.contrib.admin.options.changelist_view	admin:auth_group_changelist
+/admin/auth/group/<path:object_id>/	django.views.generic.base.RedirectView
+/admin/auth/group/<path:object_id>/change/	django.contrib.admin.options.change_view	admin:auth_group_change
+/admin/auth/group/<path:object_id>/delete/	django.contrib.admin.options.delete_view	admin:auth_group_delete
+/admin/auth/group/<path:object_id>/history/	django.contrib.admin.options.history_view	admin:auth_group_history
+/admin/auth/group/add/	django.contrib.admin.options.add_view	admin:auth_group_add
+/admin/auth/group/autocomplete/	django.contrib.admin.options.autocomplete_view	admin:auth_group_autocomplete
+/admin/auth/user/	django.contrib.admin.options.changelist_view	admin:auth_user_changelist
+/admin/auth/user/<id>/password/	django.contrib.auth.admin.user_change_password	admin:auth_user_password_change
+/admin/auth/user/<path:object_id>/	django.views.generic.base.RedirectView
+/admin/auth/user/<path:object_id>/change/	django.contrib.admin.options.change_view	admin:auth_user_change
+/admin/auth/user/<path:object_id>/delete/	django.contrib.admin.options.delete_view	admin:auth_user_delete
+/admin/auth/user/<path:object_id>/history/	django.contrib.admin.options.history_view	admin:auth_user_history
+/admin/auth/user/add/	django.contrib.auth.admin.add_view	admin:auth_user_add
+/admin/auth/user/autocomplete/	django.contrib.admin.options.autocomplete_view	admin:auth_user_autocomplete
+/admin/catalogue/catalogue/	django.contrib.admin.options.changelist_view	admin:catalogue_catalogue_changelist
+/admin/catalogue/catalogue/<path:object_id>/	django.views.generic.base.RedirectView
+/admin/catalogue/catalogue/<path:object_id>/change/	django.contrib.admin.options.change_view	admin:catalogue_catalogue_change
+/admin/catalogue/catalogue/<path:object_id>/delete/	django.contrib.admin.options.delete_view	admin:catalogue_catalogue_delete
+/admin/catalogue/catalogue/<path:object_id>/history/	django.contrib.admin.options.history_view	admin:catalogue_catalogue_history
+/admin/catalogue/catalogue/add/	django.contrib.admin.options.add_view	admin:catalogue_catalogue_add
+/admin/catalogue/catalogue/autocomplete/	django.contrib.admin.options.autocomplete_view	admin:catalogue_catalogue_autocomplete
+/admin/catalogue/category/	django.contrib.admin.options.changelist_view	admin:catalogue_category_changelist
+/admin/catalogue/category/<path:object_id>/	django.views.generic.base.RedirectView
+/admin/catalogue/category/<path:object_id>/change/	django.contrib.admin.options.change_view	admin:catalogue_category_change
+/admin/catalogue/category/<path:object_id>/delete/	django.contrib.admin.options.delete_view	admin:catalogue_category_delete
+/admin/catalogue/category/<path:object_id>/history/	django.contrib.admin.options.history_view	admin:catalogue_category_history
+/admin/catalogue/category/add/	django.contrib.admin.options.add_view	admin:catalogue_category_add
+/admin/catalogue/category/autocomplete/	django.contrib.admin.options.autocomplete_view	admin:catalogue_category_autocomplete
+/admin/jsi18n/	django.contrib.admin.sites.i18n_javascript	admin:jsi18n
+/admin/login/	django.contrib.admin.sites.login	admin:login
+/admin/logout/	django.contrib.admin.sites.logout	admin:logout
+/admin/password_change/	django.contrib.admin.sites.password_change	admin:password_change
+/admin/password_change/done/	django.contrib.admin.sites.password_change_done	admin:password_change_done
+/admin/r/<int:content_type_id>/<path:object_id>/	django.contrib.contenttypes.views.shortcut	admin:view_on_site
+/api/	rest_framework.routers.APIRootView	api-root
+/api/\.<format>/	rest_framework.routers.APIRootView	api-root
+/api/catalogue/	catalogue.views.CatalogueView.CatalogueViewSet	Catalogue-list
+/api/catalogue/<pk>/	catalogue.views.CatalogueView.CatalogueViewSet	Catalogue-detail
+/api/catalogue/<pk>\.<format>/	catalogue.views.CatalogueView.CatalogueViewSet	Catalogue-detail
+/api/catalogue\.<format>/	catalogue.views.CatalogueView.CatalogueViewSet	Catalogue-list
+/api/category/	catalogue.views.CategoryView.CategoryViewSet	Category-list
+/api/category/<pk>/	catalogue.views.CategoryView.CategoryViewSet	Category-detail
+/api/category/<pk>\.<format>/	catalogue.views.CategoryView.CategoryViewSet	Category-detail
+/api/category\.<format>/	catalogue.views.CategoryView.CategoryViewSet	Category-list
+/img/<path>	django.views.static.serve

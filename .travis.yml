@@ -1,0 +1,15 @@
+language: python
+python:
+- "3.6"
+
+# install dependencies
+install:
+- pip install -r requirements.txt
+
+# run test scripts
+script:
+- python -m unittest tests/testMonoBreaker.py
+
+# run coveralls after successful tests
+after_success:
+- coveralls

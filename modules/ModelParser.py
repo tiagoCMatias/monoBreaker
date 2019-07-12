@@ -16,7 +16,7 @@ class ModelParser:
         self.graph_network = GraphNetwork()
 
     def read_model_file(self):
-        if os.path.isfile(self.file_path) :
+        if os.path.isfile(self.file_path):
             with open(self.file_path) as data_file:
                 data = json.load(data_file)
 
@@ -45,7 +45,7 @@ class ModelParser:
     def show_graph(self, labels=False, savefig=False):
         pos = nx.spring_layout(self.graph_network.main_graph, k=0.25, iterations=50)
         nx.draw_networkx_labels(self.graph_network.main_graph, pos=pos, font_size=10)
-        nx.draw(self.graph_network.main_graph, with_labels=labels)
+        nx.draw_networkx(self.graph_network.main_graph, with_labels=labels)
         if savefig:
             plt.savefig("Graph.png", format="PNG")
         plt.show()
@@ -54,13 +54,22 @@ class ModelParser:
         for idx, graph_cut in enumerate(self.graph_network.list_of_graph_cuts):
             pos = nx.spring_layout(graph_cut, k=0.25, iterations=50)
             nx.draw_networkx_labels(graph_cut, pos=pos, font_size=10)
-            nx.draw(graph_cut, with_labels=True)
+            nx.draw_networkx(graph_cut, with_labels=True)
             plt.savefig("graph_cut_{}.png".format(idx), format="PNG")
             plt.show()
 
     def show_graph_cuts(self):
         for graph in self.graph_network.list_of_graph_cuts:
             self.graph_network.show_graph(graph)
+
+    def create_cuts_gelphi(self):
+        for idx, graph in enumerate(self.graph_network.list_of_graph_cuts):
+            nx.write_gexf(graph, "output/graph_{}.gexf".format(idx))
+            self.graph_network.show_graph(graph)
+        nx.write_gexf(self.graph_network.main_graph, "output/graph_main.gexf")
+
+    def create_main_graph_gephi(self):
+        nx.write_gexf(self.graph_network.main_graph, "output/graph_main.gexf")
 
 
 class Entity:

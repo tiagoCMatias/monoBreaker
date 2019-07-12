@@ -120,7 +120,7 @@ class GraphMaker:
             plt.colorbar(nc)
 
         plt.axis('off')
-        nx.draw(graph_to_print, with_labels=True)
+        nx.draw_networkx(graph_to_print, with_labels=True)
         plt.show()
 
     def save_to_file(self, project_path):

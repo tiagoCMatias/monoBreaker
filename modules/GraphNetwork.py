@@ -27,13 +27,13 @@ class GraphNetwork:
             highest_node_usage = view_max_usage if highest_node_usage < view_max_usage else highest_node_usage
 
         for view in transform_analysis:
-            update_graph.add_node(view['modules'][0], type='View')
+            update_graph.add_node(view['modules'][0].split(".")[-1], type='View')
             for info in view['db_info']:
                 if update_graph.has_node(info['model']):
                     node_weight = update_graph[info['model']].get(info['model'], {}).get('weight', 1)
                     node_weight = node_weight / highest_node_usage
                     node_weight = round((node_weight * added_weight) + 1)
-                    update_graph.add_edge(info['model'], view['modules'][0], weight=node_weight)
+                    update_graph.add_edge(info['model'], view['modules'][0].split(".")[-1], weight=node_weight)
 
         self.main_graph = update_graph
         # return update_graph
@@ -50,16 +50,20 @@ class GraphNetwork:
         if graph is None:
             graph = copy.deepcopy(self.main_graph)
         nx.spring_layout(graph,k=0.15,iterations=20)
-        nx.draw(graph, with_labels=labels)
+        nx.draw_networkx(graph, with_labels=labels)
         plt.show()
 
     def cut_graph(self, graph_to_cut: nx.Graph = None):
         if graph_to_cut is None:
             graph_to_cut = copy.deepcopy(self.main_graph)
+
         communities_generator = community.girvan_newman(graph_to_cut)
 
         top_level_communities = next(communities_generator)
-        next_level_communities = next(communities_generator)
+        try:
+            next_level_communities = next(communities_generator)
+        except StopIteration:
+            next_level_communities=top_level_communities
 
         list_of_missing_files = []
 
@@ -108,5 +112,5 @@ class GraphNetwork:
             plt.colorbar(nc)
 
         plt.axis('off')
-        nx.draw(graph_to_print, with_labels=True)
+        nx.draw_networkx(graph_to_print, with_labels=True)
         plt.show()
