@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 
@@ -8,7 +9,9 @@ from modules.profileUtils import DynamicAnalysis
 
 class TestMonoBreaker(unittest.TestCase):
     def setUp(self) -> None:
-        self.directory_path = '../Samples/catalogue/'
+        self.current_dir = os.path.dirname(os.path.realpath(__file__))
+        self.directory_path = 'SampleProj/catalogue'
+        self.directory_path = os.path.join(self.current_dir, self.directory_path)
 
     def testDirectoryParse(self):
         project_info = ModelParser(self.directory_path)
