@@ -19,7 +19,7 @@ def header():
 
 def main():
     db_name = 'Test.db'
-    directory_path = 'Samples/3pl_api'
+    directory_path = '/home/tiago/Documents/trash/sample_proj/example_1'
 
     parser = optparse.OptionParser()
     parser.add_option("--pydir", action="store", dest="pydir",
@@ -47,7 +47,8 @@ def main():
             # list_of_changes = static_analisys.creyate_report(model_analizer.graph_network)
 
             urls = static_analisys.parse_url_file()
-            # static_relations = static_analisys.create_static_relations(django_analysis)
+            new_relations = relations = static_analisys.create_static_relations()
+
 
             # sorted(model_analizer.graph_network.main_graph.degree, key=lambda x: x[1], reverse=False)
 
@@ -55,7 +56,7 @@ def main():
 
             if "y" in show_graph.lower():
                 print("Close the plot to continue")
-                model_analizer.show_graph()
+                model_analizer.show_graph(labels=True)
 
             print("Starting Dynamic Analysis")
 
@@ -102,7 +103,7 @@ def main():
                     final_options = int(final_options)
                     if final_options == 1:
                         print("Close the plot to continue")
-                        model_analizer.show_graph()
+                        model_analizer.show_graph(labels=True)
                     if final_options == 2:
                         print("Close the plot to continue")
                         model_analizer.show_graph_cuts()
