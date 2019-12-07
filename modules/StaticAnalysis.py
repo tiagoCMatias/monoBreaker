@@ -15,7 +15,8 @@ class StaticAnalysis:
         self.project_path = None
         self.urls = []
 
-    def create_static_relations(self, module_list):
+    def create_static_relations(self):
+        module_list = self.project_analysis
         relations = defaultdict(list)
         for module in module_list:
             for _import in module.get('imports', []):

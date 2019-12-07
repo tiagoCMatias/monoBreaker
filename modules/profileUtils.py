@@ -162,11 +162,12 @@ class DynamicAnalysis:
             module_name = list(set([view['module'] for view in urls if view['functionCall'] == view_name]))
             if len(module_name) == 0:
                 module_name = list(set([view['module'] for view in urls if view['module'] == view_name]))
-            self.dynamic_data.append({
-                'view_name': view_name,
-                'modules': module_name,
-                'main_module': module_name[0],
-                'db_info': db_info
-            })
+            if module_name:
+                self.dynamic_data.append({
+                    'view_name': view_name,
+                    'modules': module_name,
+                    'main_module': module_name[0],
+                    'db_info': db_info
+                })
 
         return self.dynamic_data

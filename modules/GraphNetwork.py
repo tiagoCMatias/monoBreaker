@@ -12,6 +12,10 @@ class GraphNetwork:
         self.list_of_graph_cuts = []
         self.missing_files = []
 
+    def update_static_relations(self, static_relations):
+
+        pass
+
     def remove_isolated_nodes(self):
         self.main_graph.remove_nodes_from(list(nx.isolates(self.main_graph)))
 
@@ -20,20 +24,27 @@ class GraphNetwork:
 
         highest_node_usage = 1
         # biggest_weight = sorted(update_graph.degree, key=lambda x: x[1], reverse=True)[0][1]
-        added_weight = 4
-
+        view_max_usage = 1
         for view in transform_analysis:
             view_max_usage = max([info['usage'] for info in view['db_info']], default=0)
             highest_node_usage = view_max_usage if highest_node_usage < view_max_usage else highest_node_usage
 
+        factor = view_max_usage / highest_node_usage
+
         for view in transform_analysis:
-            update_graph.add_node(view['modules'][0].split(".")[-1], type='View')
+            view_name = view['modules'][0].split(".")[-1]
+            update_graph.add_node(view_name, type='View')
             for info in view['db_info']:
-                if update_graph.has_node(info['model']):
-                    node_weight = update_graph[info['model']].get(info['model'], {}).get('weight', 1)
-                    node_weight = node_weight / highest_node_usage
-                    node_weight = round((node_weight * added_weight) + 1)
-                    update_graph.add_edge(info['model'], view['modules'][0].split(".")[-1], weight=node_weight)
+                if update_graph.has_node(info['model'].split("_")[-1].replace('"', '').capitalize()):
+                    model = info['model'].split("_")[-1].replace('"', '').capitalize()
+
+                    current_edge_weigth = update_graph.get_edge_data(model, view_name, dict({})).get('weight', 1)
+                    weight_to_add = info['usage'] * factor
+                    node_weight = current_edge_weigth + weight_to_add
+                    # node_weight = update_graph[model].get(model, {}).get('weight', 1)
+                    # node_weight = node_weight / highest_node_usage
+                    # node_weight = round((node_weight * added_weight) + 1)
+                    update_graph.add_edge(model, view_name, weight=node_weight)
 
         self.main_graph = update_graph
         # return update_graph
