@@ -19,7 +19,7 @@ def header():
 
 def main():
     db_name = 'Test.db'
-    directory_path = '/home/tiago/Documents/trash/sample_proj/example_1'
+    directory_path = '/home/tiago/Documents/trash/sample_proj/example_1/'
 
     parser = optparse.OptionParser()
     parser.add_option("--pydir", action="store", dest="pydir",
@@ -47,16 +47,18 @@ def main():
             # list_of_changes = static_analisys.creyate_report(model_analizer.graph_network)
 
             urls = static_analisys.parse_url_file()
-            new_relations = relations = static_analisys.create_static_relations()
+            new_relations = static_analisys.create_static_relations()
+
+            model_analizer.update_static_relations(new_relations)
 
 
             # sorted(model_analizer.graph_network.main_graph.degree, key=lambda x: x[1], reverse=False)
 
-            show_graph = input("show initial graph (y/n):")
+            show_graph = 'n'# input("show initial graph (y/n):")
 
             if "y" in show_graph.lower():
                 print("Close the plot to continue")
-                model_analizer.show_graph(labels=True)
+                model_analizer.show_graph(labels=False)
 
             print("Starting Dynamic Analysis")
 
@@ -92,7 +94,7 @@ def main():
             model_analizer.cut_graph()
             model_analizer.create_main_graph_gephi()
             while True:
-                final_options = input("Options:\n"
+                final_options = input("Options:\n" 
                                       "1: Show Updated Graph\n"
                                       "2: Show graph cuts\n"
                                       "3: Create Report\n"

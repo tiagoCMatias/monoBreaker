@@ -15,6 +15,19 @@ class ModelParser:
         self.relations_list = []
         self.graph_network = GraphNetwork()
 
+    def update_static_relations(self, static_relations):
+        for view in static_relations:
+            for model in static_relations[view]:
+                e = list(map(lambda x: x['name'] == model['name'], [e.to_json() for e in self.entities_list]))
+                t = [i for i, x in enumerate(e) if x]
+                view_entity = Entity(app_name=view, name=view)
+                if t:
+                    new_relation = Relation(origin=view_entity, destination=self.entities_list[t[0]], weight=model['usage'])
+                    self.graph_network.add_node_list([view_entity])
+                    self.graph_network.add_edge_list([new_relation])
+                    self.entities_list.append(view_entity)
+                    self.relations_list.append(new_relation)
+
     def read_model_file(self):
         if os.path.isfile(self.file_path):
             with open(self.file_path) as data_file:
@@ -43,9 +56,12 @@ class ModelParser:
         self.graph_network.cut_graph()
 
     def show_graph(self, labels=False, savefig=False):
-        pos = nx.spring_layout(self.graph_network.main_graph, k=0.25, iterations=50)
-        nx.draw_networkx_labels(self.graph_network.main_graph, pos=pos, font_size=10)
-        nx.draw_networkx(self.graph_network.main_graph, with_labels=labels)
+        pos = nx.spring_layout(self.graph_network.main_graph)
+        if labels:
+            nx.draw_networkx_labels(self.graph_network.main_graph, pos=pos, font_size=10)
+            nx.draw_networkx(self.graph_network.main_graph, with_labels=labels)
+        else:
+            nx.draw_networkx(self.graph_network.main_graph, with_labels=False)
         if savefig:
             plt.savefig("Graph.png", format="PNG")
         plt.show()
@@ -88,11 +104,11 @@ class Entity:
 
 
 class Relation:
-    def __init__(self, origin: Entity, destination: Entity):
+    def __init__(self, origin: Entity, destination: Entity, weight=1):
         self.origin = origin
         self.destination = destination
         self.r_type = 'AGGREGATION'
-        self.weight = 1
+        self.weight = weight
 
     def to_json(self):
         return {
@@ -101,5 +117,3 @@ class Relation:
             "type": str(self.r_type),
             "weight": self.weight
         }
-
-
